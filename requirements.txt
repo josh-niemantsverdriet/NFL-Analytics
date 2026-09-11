@@ -1,4 +1,5 @@
+azure-functions
+azure-identity
+azure-storage-blob
 nflreadpy
 polars
-azure-storage-blob
-azure-identity

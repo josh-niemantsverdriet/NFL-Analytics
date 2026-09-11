@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from pathlib import Path
+from azure_storage import upload_file
 
 import nflreadpy as nfl
 import polars as pl
@@ -31,6 +32,17 @@ def save_dataset(
         f"{dataframe.height:,} rows x "
         f"{dataframe.width:,} columns -> "
         f"{output_file}"
+    )
+
+    blob_name = (
+        f"season={SEASON}/"
+        f"snapshot_date={snapshot_date}/"
+        f"{dataset_name}.parquet"
+    )
+
+    upload_file(
+        output_file,
+        blob_name
     )
 
 

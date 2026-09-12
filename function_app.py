@@ -12,6 +12,8 @@ from src.azure_storage import (
     upload_dataframe
 )
 
+from src.database import get_connection
+
 
 app = func.FunctionApp(
     http_auth_level=func.AuthLevel.FUNCTION
@@ -161,6 +163,119 @@ def analyze(req: func.HttpRequest) -> func.HttpResponse:
     except Exception as error:
 
         print(f"Analytics failed: {error}")
+
+        return func.HttpResponse(
+            json.dumps({
+                "success": False,
+                "error": str(error)
+            }),
+            mimetype="application/json",
+            status_code=500
+        )
+
+@app.route(
+    route="sql-test",
+    methods=["GET"]
+)
+def sql_test(req: func.HttpRequest) -> func.HttpResponse:
+
+    try:
+        connection = get_connection()
+        cursor = connection.cursor()
+
+        cursor.execute("""
+            SELECT
+                USER_NAME() AS connected_user,
+                COUNT(*) AS team_analytics_rows
+            FROM dbo.TeamAnalytics
+        """)
+
+        row = cursor.fetchone()
+
+        cursor.close()
+        connection.close()
+
+        response = {
+            "success": True,
+            "connected_user": row[0],
+            "team_analytics_rows": row[1]
+        }
+
+        return func.HttpResponse(
+            json.dumps(response),
+            mimetype="application/json",
+            status_code=200
+        )
+
+    except Exception as error:
+
+        return func.HttpResponse(
+            json.dumps({
+                "success": False,
+                "error": str(error)
+            }),
+            mimetype="application/json",
+            status_code=500
+        )
+
+@app.route(
+    route="team-analytics",
+    methods=["GET"]
+)
+def team_analytics(req: func.HttpRequest) -> func.HttpResponse:
+
+    try:
+        connection = get_connection()
+        cursor = connection.cursor()
+
+        cursor.execute("""
+            SELECT
+                season,
+                snapshot_date,
+                team,
+                plays,
+                epa_per_play,
+                pass_epa_per_play,
+                rush_epa_per_play,
+                success_rate,
+                explosive_play_rate,
+                pass_rate
+            FROM dbo.TeamAnalytics
+            WHERE snapshot_date = (
+                SELECT MAX(snapshot_date)
+                FROM dbo.TeamAnalytics
+            )
+            ORDER BY epa_per_play DESC
+        """)
+
+        rows = cursor.fetchall()
+
+        results = []
+
+        for row in rows:
+            results.append({
+                "season": row[0],
+                "snapshot_date": row[1].isoformat(),
+                "team": row[2],
+                "plays": row[3],
+                "epa_per_play": row[4],
+                "pass_epa_per_play": row[5],
+                "rush_epa_per_play": row[6],
+                "success_rate": row[7],
+                "explosive_play_rate": row[8],
+                "pass_rate": row[9]
+            })
+
+        cursor.close()
+        connection.close()
+
+        return func.HttpResponse(
+            json.dumps(results),
+            mimetype="application/json",
+            status_code=200
+        )
+
+    except Exception as error:
 
         return func.HttpResponse(
             json.dumps({

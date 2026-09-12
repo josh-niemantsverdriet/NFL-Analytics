@@ -71,3 +71,17 @@ def upload_file(
             data,
             overwrite=True
         )
+
+def download_dataframe(blob_name: str) -> pl.DataFrame:
+    blob_service_client = get_blob_service_client()
+
+    blob_client = blob_service_client.get_blob_client(
+        container=CONTAINER_NAME,
+        blob=blob_name
+    )
+
+    blob_data = blob_client.download_blob().readall()
+
+    buffer = BytesIO(blob_data)
+
+    return pl.read_parquet(buffer)

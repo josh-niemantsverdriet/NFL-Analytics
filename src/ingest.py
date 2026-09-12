@@ -25,7 +25,10 @@ def save_dataset(
 
     output_file = output_directory / f"{dataset_name}.parquet"
 
-    dataframe.write_parquet(output_file)
+    dataframe.write_parquet(
+    output_file,
+    compression="snappy"
+)
 
     print(
         f"Saved {dataset_name}: "

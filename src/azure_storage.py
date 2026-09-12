@@ -11,7 +11,7 @@ CONTAINER_NAME = "nfl-raw"
 
 
 def get_blob_service_client() -> BlobServiceClient:
-    storage_account_name = os.environ["stnflanalytics"]
+    storage_account_name = os.environ["NFL_STORAGE_ACCOUNT_NAME"]
 
     account_url = (
         f"https://{storage_account_name}.blob.core.windows.net"
@@ -31,7 +31,10 @@ def upload_dataframe(
 ) -> None:
     buffer = BytesIO()
 
-    dataframe.write_parquet(buffer)
+    dataframe.write_parquet(
+    buffer,
+    compression="snappy"
+)
     buffer.seek(0)
 
     blob_service_client = get_blob_service_client()

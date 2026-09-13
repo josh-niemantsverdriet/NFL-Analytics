@@ -887,3 +887,414 @@ def matchup(
     finally:
         if connection:
             connection.close()
+
+
+@app.route(
+    route="team/{team_code}",
+    methods=["GET"],
+    auth_level=func.AuthLevel.ANONYMOUS
+)
+def team_details(
+    req: func.HttpRequest
+) -> func.HttpResponse:
+    connection = None
+
+    try:
+        team_code = (
+            req.route_params.get("team_code")
+            or ""
+        ).strip().upper()
+
+        if not team_code:
+            return func.HttpResponse(
+                json.dumps({
+                    "success": False,
+                    "error": "Team code is required."
+                }),
+                mimetype="application/json",
+                status_code=400
+            )
+
+        connection = get_connection()
+        cursor = connection.cursor()
+
+        # Latest analytics snapshot
+        cursor.execute("""
+            SELECT TOP 1
+                season,
+                snapshot_date
+            FROM dbo.TeamAnalytics
+            ORDER BY
+                snapshot_date DESC,
+                season DESC
+        """)
+
+        snapshot = cursor.fetchone()
+
+        if snapshot is None:
+            cursor.close()
+
+            return func.HttpResponse(
+                json.dumps({
+                    "success": False,
+                    "error": "No analytics data found."
+                }),
+                mimetype="application/json",
+                status_code=404
+            )
+
+        season = snapshot[0]
+        snapshot_date = snapshot[1]
+
+        # Rank every team before filtering to the requested team.
+        cursor.execute("""
+            WITH BaseRankings AS (
+                SELECT
+                    season,
+                    snapshot_date,
+                    team,
+
+                    plays,
+                    epa_per_play,
+                    pass_epa_per_play,
+                    rush_epa_per_play,
+                    success_rate,
+                    explosive_play_rate,
+                    pass_rate,
+
+                    def_plays,
+                    def_epa_per_play,
+                    def_pass_epa_per_play,
+                    def_rush_epa_per_play,
+                    def_success_rate_allowed,
+                    def_explosive_play_rate_allowed,
+
+                    RANK() OVER (
+                        ORDER BY
+                            CASE
+                                WHEN epa_per_play IS NULL
+                                THEN 1
+                                ELSE 0
+                            END,
+                            epa_per_play DESC
+                    ) AS offense_rank,
+
+                    RANK() OVER (
+                        ORDER BY
+                            CASE
+                                WHEN def_epa_per_play IS NULL
+                                THEN 1
+                                ELSE 0
+                            END,
+                            def_epa_per_play ASC
+                    ) AS defense_rank
+
+                FROM dbo.TeamAnalytics
+
+                WHERE season = %(season)s
+                  AND snapshot_date = %(snapshot_date)s
+            ),
+
+            OverallRankings AS (
+                SELECT
+                    *,
+                    RANK() OVER (
+                        ORDER BY
+                            offense_rank
+                            + defense_rank ASC
+                    ) AS overall_rank
+                FROM BaseRankings
+            )
+
+            SELECT
+                season,
+                snapshot_date,
+                team,
+
+                plays,
+                epa_per_play,
+                pass_epa_per_play,
+                rush_epa_per_play,
+                success_rate,
+                explosive_play_rate,
+                pass_rate,
+
+                def_plays,
+                def_epa_per_play,
+                def_pass_epa_per_play,
+                def_rush_epa_per_play,
+                def_success_rate_allowed,
+                def_explosive_play_rate_allowed,
+
+                offense_rank,
+                defense_rank,
+                overall_rank
+
+            FROM OverallRankings
+
+            WHERE team = %(team)s
+        """, {
+            "season": season,
+            "snapshot_date": snapshot_date,
+            "team": team_code
+        })
+
+        row = cursor.fetchone()
+
+        if row is None:
+            cursor.close()
+
+            return func.HttpResponse(
+                json.dumps({
+                    "success": False,
+                    "error": (
+                        f"No analytics found for {team_code}."
+                    )
+                }),
+                mimetype="application/json",
+                status_code=404
+            )
+
+        analytics = {
+            "plays": row[3],
+            "epa_per_play": row[4],
+            "pass_epa_per_play": row[5],
+            "rush_epa_per_play": row[6],
+            "success_rate": row[7],
+            "explosive_play_rate": row[8],
+            "pass_rate": row[9],
+
+            "def_plays": row[10],
+            "def_epa_per_play": row[11],
+            "def_pass_epa_per_play": row[12],
+            "def_rush_epa_per_play": row[13],
+            "def_success_rate_allowed": row[14],
+            "def_explosive_play_rate_allowed": row[15]
+        }
+
+        rankings = {
+            "offense": row[16],
+            "defense": row[17],
+            "overall": row[18]
+        }
+
+        # Completed games for the team
+        cursor.execute("""
+            SELECT
+                week,
+                gameday,
+                away_team,
+                away_score,
+                home_team,
+                home_score
+
+            FROM dbo.Games
+
+            WHERE season = %(season)s
+              AND (
+                    away_team = %(team)s
+                    OR home_team = %(team)s
+              )
+              AND away_score IS NOT NULL
+              AND home_score IS NOT NULL
+
+            ORDER BY
+                gameday DESC,
+                gametime DESC
+        """, {
+            "season": season,
+            "team": team_code
+        })
+
+        game_rows = cursor.fetchall()
+
+        wins = 0
+        losses = 0
+        ties = 0
+        games = []
+
+        for game in game_rows:
+            away_team = game[2]
+            away_score = game[3]
+            home_team = game[4]
+            home_score = game[5]
+
+            if away_score == home_score:
+                result = "T"
+                ties += 1
+
+            elif (
+                away_team == team_code
+                and away_score > home_score
+            ) or (
+                home_team == team_code
+                and home_score > away_score
+            ):
+                result = "W"
+                wins += 1
+
+            else:
+                result = "L"
+                losses += 1
+
+            games.append({
+                "week": game[0],
+                "date": (
+                    game[1].isoformat()
+                    if game[1]
+                    else None
+                ),
+                "away_team": away_team,
+                "away_score": away_score,
+                "home_team": home_team,
+                "home_score": home_score,
+                "result": result
+            })
+
+        # Passing leaders
+        cursor.execute("""
+            SELECT TOP 3
+                player_id,
+                MAX(player_display_name),
+                SUM(passing_yards),
+                SUM(passing_tds)
+
+            FROM dbo.PlayerWeeklyStats
+
+            WHERE season = %(season)s
+              AND team = %(team)s
+
+            GROUP BY player_id
+
+            HAVING SUM(passing_yards) > 0
+
+            ORDER BY
+                SUM(passing_yards) DESC
+        """, {
+            "season": season,
+            "team": team_code
+        })
+
+        passing = []
+
+        for player in cursor.fetchall():
+            passing.append({
+                "player_id": player[0],
+                "player_name": player[1],
+                "yards": player[2],
+                "touchdowns": player[3]
+            })
+
+        # Rushing leaders
+        cursor.execute("""
+            SELECT TOP 3
+                player_id,
+                MAX(player_display_name),
+                SUM(rushing_yards),
+                SUM(rushing_tds)
+
+            FROM dbo.PlayerWeeklyStats
+
+            WHERE season = %(season)s
+              AND team = %(team)s
+
+            GROUP BY player_id
+
+            HAVING SUM(rushing_yards) > 0
+
+            ORDER BY
+                SUM(rushing_yards) DESC
+        """, {
+            "season": season,
+            "team": team_code
+        })
+
+        rushing = []
+
+        for player in cursor.fetchall():
+            rushing.append({
+                "player_id": player[0],
+                "player_name": player[1],
+                "yards": player[2],
+                "touchdowns": player[3]
+            })
+
+        # Receiving leaders
+        cursor.execute("""
+            SELECT TOP 3
+                player_id,
+                MAX(player_display_name),
+                SUM(receiving_yards),
+                SUM(receiving_tds)
+
+            FROM dbo.PlayerWeeklyStats
+
+            WHERE season = %(season)s
+              AND team = %(team)s
+
+            GROUP BY player_id
+
+            HAVING SUM(receiving_yards) > 0
+
+            ORDER BY
+                SUM(receiving_yards) DESC
+        """, {
+            "season": season,
+            "team": team_code
+        })
+
+        receiving = []
+
+        for player in cursor.fetchall():
+            receiving.append({
+                "player_id": player[0],
+                "player_name": player[1],
+                "yards": player[2],
+                "touchdowns": player[3]
+            })
+
+        cursor.close()
+
+        return func.HttpResponse(
+            json.dumps({
+                "team": team_code,
+                "season": season,
+                "snapshot_date": (
+                    snapshot_date.isoformat()
+                ),
+
+                "record": {
+                    "wins": wins,
+                    "losses": losses,
+                    "ties": ties
+                },
+
+                "rankings": rankings,
+
+                "analytics": analytics,
+
+                "leaders": {
+                    "passing": passing,
+                    "rushing": rushing,
+                    "receiving": receiving
+                },
+
+                "recent_games": games[:5]
+            }),
+            mimetype="application/json",
+            status_code=200
+        )
+
+    except Exception as error:
+        return func.HttpResponse(
+            json.dumps({
+                "success": False,
+                "error": str(error)
+            }),
+            mimetype="application/json",
+            status_code=500
+        )
+
+    finally:
+        if connection:
+            connection.close()

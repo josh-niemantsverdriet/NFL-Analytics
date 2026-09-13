@@ -54,6 +54,11 @@ body {
     sans-serif;
 }
 
+h1,
+h2 {
+  color: #f7fafc;
+}
+
 button {
   padding: 10px 18px;
 

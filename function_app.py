@@ -507,3 +507,121 @@ def dashboard(req: func.HttpRequest) -> func.HttpResponse:
     finally:
         if connection:
             connection.close()
+
+@app.route(
+    route="matchup",
+    methods=["GET"],
+    auth_level=func.AuthLevel.ANONYMOUS
+)
+def matchup(req: func.HttpRequest) -> func.HttpResponse:
+    connection = None
+
+    try:
+        team1 = (req.params.get("team1") or "").strip().upper()
+        team2 = (req.params.get("team2") or "").strip().upper()
+
+        if not team1 or not team2:
+            return func.HttpResponse(
+                json.dumps({
+                    "success": False,
+                    "error": "team1 and team2 are required."
+                }),
+                mimetype="application/json",
+                status_code=400
+            )
+
+        if team1 == team2:
+            return func.HttpResponse(
+                json.dumps({
+                    "success": False,
+                    "error": "Choose two different teams."
+                }),
+                mimetype="application/json",
+                status_code=400
+            )
+
+        connection = get_connection()
+        cursor = connection.cursor()
+
+        cursor.execute("""
+            SELECT
+                season,
+                snapshot_date,
+                team,
+                plays,
+                epa_per_play,
+                pass_epa_per_play,
+                rush_epa_per_play,
+                success_rate,
+                explosive_play_rate,
+                pass_rate
+            FROM dbo.TeamAnalytics
+            WHERE snapshot_date = (
+                SELECT MAX(snapshot_date)
+                FROM dbo.TeamAnalytics
+            )
+            AND team IN (%(team1)s, %(team2)s)
+        """, {
+            "team1": team1,
+            "team2": team2
+        })
+
+        rows = cursor.fetchall()
+        cursor.close()
+
+        teams = {}
+
+        for row in rows:
+            teams[row[2]] = {
+                "season": row[0],
+                "snapshot_date": row[1].isoformat(),
+                "team": row[2],
+                "plays": row[3],
+                "epa_per_play": row[4],
+                "pass_epa_per_play": row[5],
+                "rush_epa_per_play": row[6],
+                "success_rate": row[7],
+                "explosive_play_rate": row[8],
+                "pass_rate": row[9]
+            }
+
+        missing = [
+            team
+            for team in [team1, team2]
+            if team not in teams
+        ]
+
+        if missing:
+            return func.HttpResponse(
+                json.dumps({
+                    "success": False,
+                    "error": f"No analytics found for: {', '.join(missing)}"
+                }),
+                mimetype="application/json",
+                status_code=404
+            )
+
+        return func.HttpResponse(
+            json.dumps({
+                "season": teams[team1]["season"],
+                "snapshot_date": teams[team1]["snapshot_date"],
+                "team1": teams[team1],
+                "team2": teams[team2]
+            }),
+            mimetype="application/json",
+            status_code=200
+        )
+
+    except Exception as error:
+        return func.HttpResponse(
+            json.dumps({
+                "success": False,
+                "error": str(error)
+            }),
+            mimetype="application/json",
+            status_code=500
+        )
+
+    finally:
+        if connection:
+            connection.close()

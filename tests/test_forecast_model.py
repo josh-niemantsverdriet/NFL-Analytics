@@ -56,8 +56,15 @@ class ForecastModelTests(unittest.TestCase):
         self.assertGreater(hosted["home_win_probability"], neutral["home_win_probability"])
         self.assertAlmostEqual(hosted["total"], neutral["total"])
         self.assertAlmostEqual(
-            hosted["margin"] - neutral["margin"], model.metadata["home_field_points"],
+            hosted["margin"] - neutral["margin"],
+            model.metadata["home_field_points_by_team"]["BUF"],
         )
+
+    def test_home_effects_can_differ_by_team(self):
+        model = build_forecast_model(game_history(200))
+        effects = model.metadata["home_field_points_by_team"]
+        self.assertEqual(set(effects), {"BUF", "KC", "MIA", "NYJ"})
+        self.assertNotAlmostEqual(effects["BUF"], effects["NYJ"], places=4)
 
     def test_evaluation_fits_only_strictly_earlier_dates(self):
         from src import forecast_model

@@ -144,9 +144,14 @@ class _FittedScores:
     margin_stddev: float
     trained_through: date
 
+    @property
+    def home_field_points(self):
+        team_count = len(self.team_indices)
+        return self.regression.coef_[2 * team_count:]
+
     def features(self, home_team, away_team, neutral):
         team_count = len(self.team_indices)
-        features = np.zeros((2, 2 * team_count + 1), dtype=float)
+        features = np.zeros((2, 3 * team_count), dtype=float)
         home_index = self.team_indices[home_team]
         away_index = self.team_indices[away_team]
         features[0, home_index] = 1.0
@@ -154,8 +159,9 @@ class _FittedScores:
         features[1, away_index] = 1.0
         features[1, team_count + home_index] = 1.0
         if not neutral:
-            features[0, -1] = 0.5
-            features[1, -1] = -0.5
+            venue_start = 2 * team_count
+            features[0, venue_start + home_index] = 0.5
+            features[1, venue_start + home_index] = -0.5
         return features
 
     def scores(self, home_team, away_team, neutral):
@@ -359,8 +365,8 @@ def build_forecast_model(games: list[dict]) -> ForecastModel:
         "name": "Experimental score forecast",
         "version": "ridge-score-v1",
         "method": (
-            "Ridge regression fits team scoring, opponent points allowed, and a "
-            "shared home-field effect from completed scores. Recent games receive "
+            "Ridge regression fits team scoring, opponent points allowed, and "
+            "team-specific home-field effects from completed scores. Recent games receive "
             "more weight. Win chances use an approximate normal distribution of "
             "the score margin; they are uncalibrated estimates."
         ),
@@ -371,7 +377,11 @@ def build_forecast_model(games: list[dict]) -> ForecastModel:
         "trained_through": fitted.trained_through.isoformat(),
         "teams": sorted(fitted.team_indices),
         "margin_stddev": fitted.margin_stddev,
-        "home_field_points": float(fitted.regression.coef_[-1]),
+        "home_field_points": float(np.mean(fitted.home_field_points)),
+        "home_field_points_by_team": {
+            team: float(fitted.home_field_points[index])
+            for team, index in fitted.team_indices.items()
+        },
         "assumptions": {
             "ridge_alpha": RIDGE_ALPHA,
             "recency_half_life_days": RECENCY_HALF_LIFE_DAYS,
@@ -386,7 +396,7 @@ def build_forecast_model(games: list[dict]) -> ForecastModel:
             "uncertainty_method": "Normal approximation using fit-period margin residuals.",
         },
         "limitations": [
-            "Experimental score-only baseline; probability calibration is not established.",
+            "Experimental score-only model; probability calibration is not established.",
             "Injuries, quarterbacks, weather, rest, and roster changes are not modeled.",
             "Ties are not modeled separately; winner accuracy and Brier score exclude ties.",
             "Score means are averages, not predictions of an exact final score.",

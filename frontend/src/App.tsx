@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Route, Routes } from "react-router";
+import { Link, Route, Routes } from "react-router";
 
 import "./App.css";
 
 import LeagueRankings from "./LeagueRankings";
 import MatchupAnalyzer from "./MatchupAnalyzer";
 import TeamPage from "./TeamPage";
+import GameForecast from "./GameForecast";
 
 
 interface Team {
@@ -163,44 +164,31 @@ function HomePage() {
   ] = useState<string | null>(null);
 
 
-  const loadDashboard = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const apiBaseUrl =
-        import.meta.env.VITE_API_BASE_URL;
-
-      const response = await fetch(
-        `${apiBaseUrl}/api/dashboard`
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          `Dashboard API returned ${response.status}`
-        );
-      }
-
-      const data: DashboardData =
-        await response.json();
-
-      setDashboard(data);
-
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to load NFL analytics."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-
+  const [dashboardAttempt, setDashboardAttempt] = useState(0);
   useEffect(() => {
-    loadDashboard();
-  }, []);
+    const controller = new AbortController();
+    const loadDashboard = async () => {
+      try {
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+        const response = await fetch(`${apiBaseUrl}/api/dashboard`, {
+          signal: controller.signal,
+        });
+        if (!response.ok) {
+          throw new Error(`Dashboard API returned ${response.status}`);
+        }
+        const data: DashboardData = await response.json();
+        if (!controller.signal.aborted) setDashboard(data);
+      } catch (err) {
+        if (!controller.signal.aborted) {
+          setError(err instanceof Error ? err.message : "Failed to load NFL analytics.");
+        }
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    };
+    void loadDashboard();
+    return () => controller.abort();
+  }, [dashboardAttempt]);
 
 
   if (loading) {
@@ -233,7 +221,11 @@ function HomePage() {
         </p>
 
         <button
-          onClick={loadDashboard}
+          onClick={() => {
+            setLoading(true);
+            setError(null);
+            setDashboardAttempt((attempt) => attempt + 1);
+          }}
         >
           Try Again
         </button>
@@ -566,7 +558,14 @@ function HomePage() {
 
 function App() {
   return (
+    <>
+    <nav className="app-navigation" aria-label="Main navigation">
+      <Link to="/">Dashboard</Link>
+      <Link to="/forecast">Game Forecasts <span>NEW</span></Link>
+    </nav>
     <Routes>
+
+      <Route path="/forecast" element={<GameForecast />} />
 
       <Route
         path="/"
@@ -579,6 +578,7 @@ function App() {
       />
 
     </Routes>
+    </>
   );
 }
 

@@ -7,9 +7,11 @@ from src.analytics import calculate_team_analytics
 from src.azure_storage import download_dataframe, upload_dataframe
 from src.database import get_connection
 from src.nfl_data import load_nfl_datasets
+from src.forecast_routes import forecast_blueprint
 
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.FUNCTION)
+app.register_functions(forecast_blueprint)
 
 
 @app.route(route="ingest", methods=["POST"])

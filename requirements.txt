@@ -4,3 +4,6 @@ azure-storage-blob
 nflreadpy
 polars
 mssql-python
+numpy
+scikit-learn
+tzdata

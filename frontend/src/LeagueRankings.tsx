@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router";
+
 
 interface TeamAnalytics {
   season: number;
@@ -21,12 +23,14 @@ interface TeamAnalytics {
   def_explosive_play_rate_allowed: number | null;
 }
 
+
 interface RankedTeam extends TeamAnalytics {
   offense_rank: number;
   defense_rank: number;
   overall_rank: number;
   overall_score: number;
 }
+
 
 type RankingMode =
   | "overall"
@@ -114,6 +118,7 @@ function LeagueRankings() {
     };
 
     loadRankings();
+
   }, [apiBaseUrl]);
 
 
@@ -255,6 +260,7 @@ function LeagueRankings() {
 
 
       return combined;
+
     }, [teams]);
 
 
@@ -333,6 +339,7 @@ function LeagueRankings() {
     <section className="dashboard-section">
 
       <div className="section-title">
+
         <div>
           <p className="eyebrow">
             LEAGUE RANKINGS
@@ -342,6 +349,7 @@ function LeagueRankings() {
             Team Rankings
           </h2>
         </div>
+
       </div>
 
 
@@ -360,6 +368,7 @@ function LeagueRankings() {
           Overall
         </button>
 
+
         <button
           className={
             mode === "offense"
@@ -372,6 +381,7 @@ function LeagueRankings() {
         >
           Offense
         </button>
+
 
         <button
           className={
@@ -453,8 +463,19 @@ function LeagueRankings() {
                       #{getRank(team)}
                     </td>
 
+
                     <td className="ranking-team">
-                      {team.team}
+
+                      <Link
+                        to={`/team/${team.team}`}
+                        style={{
+                          color: "inherit",
+                          textDecoration: "none"
+                        }}
+                      >
+                        {team.team}
+                      </Link>
+
                     </td>
 
 

@@ -1,0 +1,400 @@
+.team-back-link {
+  display: inline-block;
+
+  margin-bottom: 36px;
+
+  color: #93a3b9;
+
+  font-size: 0.85rem;
+  font-weight: 800;
+
+  text-decoration: none;
+}
+
+.team-back-link:hover {
+  color: #ffffff;
+}
+
+
+.team-page-header {
+  display: flex;
+
+  justify-content: space-between;
+  align-items: flex-end;
+
+  gap: 32px;
+
+  padding-bottom: 42px;
+
+  border-bottom:
+    1px solid #273142;
+}
+
+.team-record {
+  margin:
+    16px
+    0
+    0;
+
+  color: #9aa8bb;
+
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+
+.team-ranking-summary {
+  display: grid;
+
+  grid-template-columns:
+    repeat(3, 110px);
+
+  gap: 10px;
+}
+
+.team-ranking-summary > div {
+  padding: 18px;
+
+  border:
+    1px solid #293549;
+
+  border-radius: 12px;
+
+  background: #101722;
+
+  text-align: center;
+}
+
+.team-ranking-summary span {
+  display: block;
+
+  margin-bottom: 6px;
+
+  color: #748399;
+
+  font-size: 0.7rem;
+  font-weight: 800;
+
+  text-transform: uppercase;
+}
+
+.team-ranking-summary strong {
+  font-size: 1.6rem;
+}
+
+
+.team-detail-section {
+  margin-top: 56px;
+}
+
+
+.team-metric-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(
+      3,
+      minmax(0, 1fr)
+    );
+
+  gap: 14px;
+}
+
+.team-metric-card {
+  padding: 22px;
+
+  border:
+    1px solid #263043;
+
+  border-radius: 13px;
+
+  background:
+    rgba(
+      16,
+      23,
+      34,
+      0.9
+    );
+}
+
+.team-metric-card span {
+  display: block;
+
+  margin-bottom: 14px;
+
+  color: #78879b;
+
+  font-size: 0.75rem;
+  font-weight: 800;
+
+  text-transform: uppercase;
+}
+
+.team-metric-card strong {
+  font-size: 1.65rem;
+}
+
+
+.team-player-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(
+      3,
+      minmax(0, 1fr)
+    );
+
+  gap: 16px;
+}
+
+.team-player-card {
+  overflow: hidden;
+
+  border:
+    1px solid #263043;
+
+  border-radius: 13px;
+
+  background:
+    rgba(
+      16,
+      23,
+      34,
+      0.9
+    );
+}
+
+.team-player-header {
+  display: flex;
+
+  justify-content: space-between;
+  align-items: center;
+
+  padding:
+    18px
+    20px;
+
+  border-bottom:
+    1px solid #253044;
+}
+
+.team-player-header h3 {
+  margin: 0;
+}
+
+.team-player-header span {
+  color: #718096;
+
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.team-player-row {
+  display: grid;
+
+  grid-template-columns:
+    28px 1fr auto;
+
+  align-items: center;
+
+  gap: 10px;
+
+  padding:
+    15px
+    20px;
+
+  border-bottom:
+    1px solid #202938;
+}
+
+.team-player-row:last-child {
+  border-bottom: 0;
+}
+
+.team-player-rank {
+  color: #69788c;
+
+  font-weight: 800;
+}
+
+.team-player-row > div {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 3px;
+}
+
+.team-player-row small {
+  color: #748399;
+}
+
+
+.team-games {
+  overflow: hidden;
+
+  border:
+    1px solid #263043;
+
+  border-radius: 13px;
+
+  background:
+    rgba(
+      16,
+      23,
+      34,
+      0.9
+    );
+}
+
+.team-game-row {
+  display: grid;
+
+  grid-template-columns:
+    45px 140px 1fr;
+
+  align-items: center;
+
+  gap: 20px;
+
+  padding:
+    18px
+    22px;
+
+  border-bottom:
+    1px solid #202938;
+}
+
+.team-game-row:last-child {
+  border-bottom: 0;
+}
+
+.team-result {
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  width: 34px;
+  height: 34px;
+
+  border-radius: 8px;
+
+  font-weight: 900;
+}
+
+.team-result-w {
+  background: #183625;
+  color: #7be09c;
+}
+
+.team-result-l {
+  background: #3b1e24;
+  color: #ff929f;
+}
+
+.team-result-t {
+  background: #30333b;
+  color: #d4d7dd;
+}
+
+.team-game-week {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 3px;
+
+  font-weight: 800;
+}
+
+.team-game-week small {
+  color: #718096;
+
+  font-weight: 500;
+}
+
+.team-game-score {
+  display: grid;
+
+  grid-template-columns:
+    1fr 40px 1fr 40px;
+
+  gap: 10px;
+
+  text-align: right;
+}
+
+.team-game-score span {
+  color: #9aa8bb;
+
+  font-weight: 800;
+}
+
+.team-game-score strong {
+  font-size: 1.05rem;
+}
+
+
+.team-empty {
+  margin: 0;
+
+  padding: 20px;
+
+  color: #7e8ca1;
+}
+
+
+.team-data-date {
+  margin-top: 40px;
+
+  color: #637288;
+
+  font-size: 0.75rem;
+
+  text-align: center;
+}
+
+
+@media (max-width: 850px) {
+  .team-page-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .team-ranking-summary {
+    width: 100%;
+
+    grid-template-columns:
+      repeat(3, 1fr);
+  }
+
+  .team-metric-grid,
+  .team-player-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .team-game-row {
+    grid-template-columns:
+      40px 1fr;
+
+    gap: 12px;
+  }
+
+  .team-game-score {
+    grid-column:
+      1 / -1;
+  }
+}
+
+
+@media (max-width: 500px) {
+  .team-ranking-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .team-game-score {
+    grid-template-columns:
+      1fr 35px;
+  }
+}

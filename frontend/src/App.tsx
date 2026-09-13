@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
+import { Route, Routes } from "react-router";
+
 import "./App.css";
 
-import MatchupAnalyzer from "./MatchupAnalyzer";
 import LeagueRankings from "./LeagueRankings";
+import MatchupAnalyzer from "./MatchupAnalyzer";
+import TeamPage from "./TeamPage";
 
 
 interface Team {
@@ -141,7 +144,7 @@ function LeaderList({
 }
 
 
-function App() {
+function HomePage() {
   const [
     dashboard,
     setDashboard
@@ -203,11 +206,15 @@ function App() {
   if (loading) {
     return (
       <main className="page centered">
-        <h1>NFL Analytics</h1>
+
+        <h1>
+          NFL Analytics
+        </h1>
 
         <p>
           Loading analytics...
         </p>
+
       </main>
     );
   }
@@ -342,7 +349,6 @@ function App() {
                 <div className="team-stats">
 
                   <div>
-
                     <span>
                       Success
                     </span>
@@ -352,12 +358,10 @@ function App() {
                         team.success_rate
                       )}
                     </strong>
-
                   </div>
 
 
                   <div>
-
                     <span>
                       Pass EPA
                     </span>
@@ -367,12 +371,10 @@ function App() {
                         team.pass_epa_per_play
                       )}
                     </strong>
-
                   </div>
 
 
                   <div>
-
                     <span>
                       Rush EPA
                     </span>
@@ -382,7 +384,6 @@ function App() {
                         team.rush_epa_per_play
                       )}
                     </strong>
-
                   </div>
 
                 </div>
@@ -559,6 +560,25 @@ function App() {
       </section>
 
     </main>
+  );
+}
+
+
+function App() {
+  return (
+    <Routes>
+
+      <Route
+        path="/"
+        element={<HomePage />}
+      />
+
+      <Route
+        path="/team/:teamCode"
+        element={<TeamPage />}
+      />
+
+    </Routes>
   );
 }
 

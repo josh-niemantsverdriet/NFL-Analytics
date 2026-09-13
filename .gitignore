@@ -222,3 +222,4 @@ __marimo__/
 __pycache__/
 data/
 .env
+.env.local

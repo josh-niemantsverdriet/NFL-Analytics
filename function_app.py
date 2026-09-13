@@ -220,7 +220,8 @@ def sql_test(req: func.HttpRequest) -> func.HttpResponse:
 
 @app.route(
     route="team-analytics",
-    methods=["GET"]
+    methods=["GET"],
+    auth_level=func.AuthLevel.ANONYMOUS
 )
 def team_analytics(req: func.HttpRequest) -> func.HttpResponse:
 

@@ -1,0 +1,122 @@
+#root {
+  min-height: 100vh;
+}
+
+body {
+  margin: 0;
+  background: #0b0f17;
+  color: #f3f4f6;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.page {
+  width: min(1400px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 64px 0;
+}
+
+.hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 32px;
+  margin-bottom: 40px;
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  color: #8b98ad;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(2.5rem, 5vw, 4.5rem);
+}
+
+.subtitle {
+  margin-top: 18px;
+  color: #9ca3af;
+}
+
+.snapshot {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #8b98ad;
+  font-size: 0.8rem;
+}
+
+.snapshot strong {
+  color: #f3f4f6;
+  font-size: 1rem;
+}
+
+.card {
+  overflow: hidden;
+  border: 1px solid #222a38;
+  border-radius: 16px;
+  background: #111722;
+}
+
+.section-header {
+  padding: 24px 28px;
+  border-bottom: 1px solid #222a38;
+}
+
+.section-header h2 {
+  margin: 0;
+}
+
+.section-header p {
+  margin: 6px 0 0;
+  color: #8b98ad;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 16px 18px;
+  border-bottom: 1px solid #1d2532;
+  text-align: right;
+  white-space: nowrap;
+}
+
+th {
+  color: #78869a;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+th:nth-child(1),
+th:nth-child(2),
+td:nth-child(1),
+td:nth-child(2) {
+  text-align: left;
+}
+
+tbody tr:hover {
+  background: #151d29;
+}
+
+.team {
+  font-weight: 800;
+}
+
+.error {
+  color: #ff8c8c;
+}

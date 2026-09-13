@@ -1,66 +1,150 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 
-interface TeamAnalytics {
-  season: number;
-  snapshot_date: string;
+interface Team {
+  rank: number;
   team: string;
   plays: number;
   epa_per_play: number | null;
+  success_rate: number | null;
   pass_epa_per_play: number | null;
   rush_epa_per_play: number | null;
-  success_rate: number | null;
-  explosive_play_rate: number | null;
-  pass_rate: number | null;
+}
+
+interface PlayerLeader {
+  rank: number;
+  player_id: string;
+  player_name: string;
+  team: string;
+  yards: number;
+  touchdowns: number;
+}
+
+interface Game {
+  week: number;
+  date: string;
+  away_team: string;
+  away_score: number;
+  home_team: string;
+  home_score: number;
+}
+
+interface DashboardData {
+  season: number;
+  snapshot_date: string;
+  top_offenses: Team[];
+  leaders: {
+    passing: PlayerLeader[];
+    rushing: PlayerLeader[];
+    receiving: PlayerLeader[];
+  };
+  recent_games: Game[];
+}
+
+function formatEPA(value: number | null) {
+  if (value === null) return "—";
+
+  return `${value >= 0 ? "+" : ""}${value.toFixed(3)}`;
+}
+
+function formatPercent(value: number | null) {
+  if (value === null) return "—";
+
+  return `${(value * 100).toFixed(1)}%`;
+}
+
+function LeaderList({
+  title,
+  players,
+}: {
+  title: string;
+  players: PlayerLeader[];
+}) {
+  return (
+    <section className="card leader-card">
+      <div className="card-header">
+        <h2>{title}</h2>
+        <span>Yards</span>
+      </div>
+
+      <div className="leader-list">
+        {players.length === 0 && (
+          <p className="empty">No data available yet.</p>
+        )}
+
+        {players.map((player) => (
+          <div className="leader-row" key={player.player_id}>
+            <div className="rank">{player.rank}</div>
+
+            <div className="leader-name">
+              <strong>{player.player_name}</strong>
+              <span>
+                {player.team} · {player.touchdowns} TD
+              </span>
+            </div>
+
+            <strong className="yards">{player.yards}</strong>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
 }
 
 function App() {
-  const [teams, setTeams] = useState<TeamAnalytics[]>([]);
+  const [dashboard, setDashboard] =
+    useState<DashboardData | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+  const loadDashboard = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-        const response = await fetch(
-          `${apiBaseUrl}/api/team-analytics`
-        );
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
-        if (!response.ok) {
-          throw new Error(`API returned ${response.status}`);
-        }
+      const response = await fetch(`${apiBaseUrl}/api/dashboard`);
 
-        const data: TeamAnalytics[] = await response.json();
-        setTeams(data);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to load data"
-        );
-      } finally {
-        setLoading(false);
+      if (!response.ok) {
+        throw new Error(`API returned ${response.status}`);
       }
-    };
 
-    loadData();
+      const data: DashboardData = await response.json();
+
+      setDashboard(data);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to load NFL analytics."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDashboard();
   }, []);
 
-  const formatNumber = (value: number | null) =>
-    value === null ? "—" : value.toFixed(3);
-
-  const formatPercent = (value: number | null) =>
-    value === null ? "—" : `${(value * 100).toFixed(1)}%`;
-
   if (loading) {
-    return <main className="page">Loading NFL analytics...</main>;
+    return (
+      <main className="page centered">
+        <h1>NFL Analytics</h1>
+        <p>Loading analytics...</p>
+      </main>
+    );
   }
 
-  if (error) {
+  if (error || !dashboard) {
     return (
-      <main className="page">
+      <main className="page centered">
         <h1>NFL Analytics</h1>
-        <p className="error">{error}</p>
+        <p className="error">{error ?? "No dashboard data."}</p>
+
+        <button onClick={loadDashboard}>Try Again</button>
       </main>
     );
   }
@@ -69,59 +153,157 @@ function App() {
     <main className="page">
       <header className="hero">
         <div>
-          <p className="eyebrow">2026 NFL SEASON</p>
+          <p className="eyebrow">
+            {dashboard.season} NFL SEASON
+          </p>
+
           <h1>NFL Analytics</h1>
+
           <p className="subtitle">
-            Advanced team metrics from NFL play-by-play data.
+            Advanced stats, efficiency metrics and league leaders
+            powered by NFL play-by-play data.
           </p>
         </div>
 
-        {teams.length > 0 && (
-          <div className="snapshot">
-            Latest snapshot
-            <strong>{teams[0].snapshot_date}</strong>
-          </div>
-        )}
+        <div className="updated">
+          <span>DATA UPDATED</span>
+          <strong>{dashboard.snapshot_date}</strong>
+        </div>
       </header>
 
-      <section className="card">
-        <div className="section-header">
-          <h2>Offensive Efficiency</h2>
-          <p>Ranked by EPA per play</p>
+      <section className="dashboard-section">
+        <div className="section-title">
+          <div>
+            <p className="eyebrow">TEAM ANALYTICS</p>
+            <h2>Top Offenses</h2>
+          </div>
+
+          <span>EPA / Play</span>
         </div>
 
-        <div className="table-wrapper">
-          <table>
-            <thead>
-              <tr>
-                <th>Rank</th>
-                <th>Team</th>
-                <th>Plays</th>
-                <th>EPA / Play</th>
-                <th>Pass EPA</th>
-                <th>Rush EPA</th>
-                <th>Success Rate</th>
-                <th>Explosive Rate</th>
-                <th>Pass Rate</th>
-              </tr>
-            </thead>
+        <div className="power-grid">
+          {dashboard.top_offenses.map((team) => (
+            <article className="team-card" key={team.team}>
+              <div className="team-card-top">
+                <span className="team-rank">#{team.rank}</span>
+                <span className="team-code">{team.team}</span>
+              </div>
 
-            <tbody>
-              {teams.map((team, index) => (
-                <tr key={team.team}>
-                  <td>{index + 1}</td>
-                  <td className="team">{team.team}</td>
-                  <td>{team.plays}</td>
-                  <td>{formatNumber(team.epa_per_play)}</td>
-                  <td>{formatNumber(team.pass_epa_per_play)}</td>
-                  <td>{formatNumber(team.rush_epa_per_play)}</td>
-                  <td>{formatPercent(team.success_rate)}</td>
-                  <td>{formatPercent(team.explosive_play_rate)}</td>
-                  <td>{formatPercent(team.pass_rate)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+              <div className="epa-number">
+                {formatEPA(team.epa_per_play)}
+              </div>
+
+              <span className="epa-label">EPA / PLAY</span>
+
+              <div className="team-stats">
+                <div>
+                  <span>Success</span>
+                  <strong>
+                    {formatPercent(team.success_rate)}
+                  </strong>
+                </div>
+
+                <div>
+                  <span>Pass EPA</span>
+                  <strong>
+                    {formatEPA(team.pass_epa_per_play)}
+                  </strong>
+                </div>
+
+                <div>
+                  <span>Rush EPA</span>
+                  <strong>
+                    {formatEPA(team.rush_epa_per_play)}
+                  </strong>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="dashboard-section">
+        <div className="section-title">
+          <div>
+            <p className="eyebrow">PLAYER STATS</p>
+            <h2>League Leaders</h2>
+          </div>
+        </div>
+
+        <div className="leader-grid">
+          <LeaderList
+            title="Passing"
+            players={dashboard.leaders.passing}
+          />
+
+          <LeaderList
+            title="Rushing"
+            players={dashboard.leaders.rushing}
+          />
+
+          <LeaderList
+            title="Receiving"
+            players={dashboard.leaders.receiving}
+          />
+        </div>
+      </section>
+
+      <section className="dashboard-section">
+        <div className="section-title">
+          <div>
+            <p className="eyebrow">LATEST RESULTS</p>
+            <h2>Recent Games</h2>
+          </div>
+        </div>
+
+        <div className="games-grid">
+          {dashboard.recent_games.map((game, index) => {
+            const awayWon =
+              game.away_score > game.home_score;
+
+            const homeWon =
+              game.home_score > game.away_score;
+
+            return (
+              <article
+                className="game-card"
+                key={`${game.date}-${game.away_team}-${game.home_team}-${index}`}
+              >
+                <div className="game-meta">
+                  <span>Week {game.week}</span>
+                  <span>{game.date}</span>
+                </div>
+
+                <div className="score-row">
+                  <span
+                    className={
+                      awayWon ? "winner team-name" : "team-name"
+                    }
+                  >
+                    {game.away_team}
+                  </span>
+
+                  <strong className={awayWon ? "winner" : ""}>
+                    {game.away_score}
+                  </strong>
+                </div>
+
+                <div className="score-row">
+                  <span
+                    className={
+                      homeWon ? "winner team-name" : "team-name"
+                    }
+                  >
+                    {game.home_team}
+                  </span>
+
+                  <strong className={homeWon ? "winner" : ""}>
+                    {game.home_score}
+                  </strong>
+                </div>
+              </article>
+            );
+          })}
         </div>
       </section>
     </main>

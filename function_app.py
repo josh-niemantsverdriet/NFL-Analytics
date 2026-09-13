@@ -286,3 +286,224 @@ def team_analytics(req: func.HttpRequest) -> func.HttpResponse:
             mimetype="application/json",
             status_code=500
         )
+
+@app.route(
+    route="dashboard",
+    methods=["GET"],
+    auth_level=func.AuthLevel.ANONYMOUS
+)
+def dashboard(req: func.HttpRequest) -> func.HttpResponse:
+    connection = None
+
+    try:
+        connection = get_connection()
+        cursor = connection.cursor()
+
+        # Latest analytics snapshot
+        cursor.execute("""
+            SELECT TOP 1
+                season,
+                snapshot_date
+            FROM dbo.TeamAnalytics
+            ORDER BY snapshot_date DESC, season DESC
+        """)
+
+        snapshot = cursor.fetchone()
+
+        if snapshot is None:
+            return func.HttpResponse(
+                json.dumps({
+                    "success": False,
+                    "error": "No analytics data found."
+                }),
+                mimetype="application/json",
+                status_code=404
+            )
+
+        season = snapshot[0]
+        snapshot_date = snapshot[1]
+
+        # Top offenses
+        cursor.execute("""
+            SELECT TOP 5
+                team,
+                plays,
+                epa_per_play,
+                success_rate,
+                pass_epa_per_play,
+                rush_epa_per_play
+            FROM dbo.TeamAnalytics
+            WHERE snapshot_date = (
+                SELECT MAX(snapshot_date)
+                FROM dbo.TeamAnalytics
+            )
+            ORDER BY epa_per_play DESC
+        """)
+
+        top_offenses = []
+
+        for index, row in enumerate(cursor.fetchall()):
+            top_offenses.append({
+                "rank": index + 1,
+                "team": row[0],
+                "plays": row[1],
+                "epa_per_play": row[2],
+                "success_rate": row[3],
+                "pass_epa_per_play": row[4],
+                "rush_epa_per_play": row[5]
+            })
+
+        # Passing leaders
+        cursor.execute("""
+            SELECT TOP 5
+                player_id,
+                MAX(player_display_name) AS player_name,
+                MAX(team) AS team,
+                SUM(passing_yards) AS yards,
+                SUM(passing_tds) AS touchdowns
+            FROM dbo.PlayerWeeklyStats
+            WHERE season = (
+                SELECT MAX(season)
+                FROM dbo.PlayerWeeklyStats
+            )
+            GROUP BY player_id
+            HAVING SUM(passing_yards) > 0
+            ORDER BY yards DESC
+        """)
+
+        passing = []
+
+        for index, row in enumerate(cursor.fetchall()):
+            passing.append({
+                "rank": index + 1,
+                "player_id": row[0],
+                "player_name": row[1],
+                "team": row[2],
+                "yards": row[3],
+                "touchdowns": row[4]
+            })
+
+        # Rushing leaders
+        cursor.execute("""
+            SELECT TOP 5
+                player_id,
+                MAX(player_display_name) AS player_name,
+                MAX(team) AS team,
+                SUM(rushing_yards) AS yards,
+                SUM(rushing_tds) AS touchdowns
+            FROM dbo.PlayerWeeklyStats
+            WHERE season = (
+                SELECT MAX(season)
+                FROM dbo.PlayerWeeklyStats
+            )
+            GROUP BY player_id
+            HAVING SUM(rushing_yards) > 0
+            ORDER BY yards DESC
+        """)
+
+        rushing = []
+
+        for index, row in enumerate(cursor.fetchall()):
+            rushing.append({
+                "rank": index + 1,
+                "player_id": row[0],
+                "player_name": row[1],
+                "team": row[2],
+                "yards": row[3],
+                "touchdowns": row[4]
+            })
+
+        # Receiving leaders
+        cursor.execute("""
+            SELECT TOP 5
+                player_id,
+                MAX(player_display_name) AS player_name,
+                MAX(team) AS team,
+                SUM(receiving_yards) AS yards,
+                SUM(receiving_tds) AS touchdowns
+            FROM dbo.PlayerWeeklyStats
+            WHERE season = (
+                SELECT MAX(season)
+                FROM dbo.PlayerWeeklyStats
+            )
+            GROUP BY player_id
+            HAVING SUM(receiving_yards) > 0
+            ORDER BY yards DESC
+        """)
+
+        receiving = []
+
+        for index, row in enumerate(cursor.fetchall()):
+            receiving.append({
+                "rank": index + 1,
+                "player_id": row[0],
+                "player_name": row[1],
+                "team": row[2],
+                "yards": row[3],
+                "touchdowns": row[4]
+            })
+
+        # Recent completed games
+        cursor.execute("""
+            SELECT TOP 6
+                week,
+                gameday,
+                away_team,
+                away_score,
+                home_team,
+                home_score
+            FROM dbo.Games
+            WHERE season = (
+                SELECT MAX(season)
+                FROM dbo.Games
+            )
+              AND away_score IS NOT NULL
+              AND home_score IS NOT NULL
+            ORDER BY gameday DESC, gametime DESC
+        """)
+
+        recent_games = []
+
+        for row in cursor.fetchall():
+            recent_games.append({
+                "week": row[0],
+                "date": row[1].isoformat() if row[1] else None,
+                "away_team": row[2],
+                "away_score": row[3],
+                "home_team": row[4],
+                "home_score": row[5]
+            })
+
+        cursor.close()
+
+        response = {
+            "season": season,
+            "snapshot_date": snapshot_date.isoformat(),
+            "top_offenses": top_offenses,
+            "leaders": {
+                "passing": passing,
+                "rushing": rushing,
+                "receiving": receiving
+            },
+            "recent_games": recent_games
+        }
+
+        return func.HttpResponse(
+            json.dumps(response),
+            mimetype="application/json",
+            status_code=200
+        )
+
+    except Exception as error:
+        return func.HttpResponse(
+            json.dumps({
+                "success": False,
+                "error": str(error)
+            }),
+            mimetype="application/json",
+            status_code=500
+        )
+
+    finally:
+        if connection:
+            connection.close()

@@ -6,6 +6,10 @@ import azure.functions as func
 from src.analytics import calculate_team_analytics
 from src.azure_storage import download_dataframe, upload_dataframe
 from src.database import get_connection
+from src.dashboard_loader import (
+    refresh_games_and_players,
+    refresh_team_analytics,
+)
 from src.nfl_data import load_nfl_datasets
 from src.forecast_routes import forecast_blueprint
 
@@ -56,6 +60,41 @@ def ingest(req: func.HttpRequest) -> func.HttpResponse:
                 "columns": dataframe.width,
                 "blob": blob_name
             }
+
+        refresh_games_and_players(
+            season=season,
+            schedules=datasets["schedules"],
+            player_stats=datasets["player_stats"]
+        )
+
+        analytics = calculate_team_analytics(
+            play_by_play=datasets["play_by_play"],
+            season=season,
+            snapshot_date=snapshot_date
+        )
+
+        analytics_blob = (
+            f"season={season}/"
+            f"snapshot_date={snapshot_date}/"
+            "team_analytics.parquet"
+        )
+
+        upload_dataframe(
+            dataframe=analytics,
+            blob_name=analytics_blob
+        )
+
+        refresh_team_analytics(
+            season=season,
+            snapshot_date=snapshot_date,
+            analytics=analytics
+        )
+
+        uploaded_datasets["team_analytics"] = {
+            "rows": analytics.height,
+            "columns": analytics.width,
+            "blob": analytics_blob
+        }
 
         return func.HttpResponse(
             json.dumps({
@@ -112,6 +151,12 @@ def analyze(req: func.HttpRequest) -> func.HttpResponse:
         upload_dataframe(
             dataframe=analytics,
             blob_name=output_blob
+        )
+
+        refresh_team_analytics(
+            season=season,
+            snapshot_date=snapshot_date,
+            analytics=analytics
         )
 
         return func.HttpResponse(

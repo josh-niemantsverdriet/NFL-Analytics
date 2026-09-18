@@ -22,14 +22,24 @@ MINIMUM_PRIOR_STDDEV = 7.0
 @dataclass
 class ScoreDistribution:
     base: np.ndarray
+    prior_games: float = JOINT_PRIOR_GAMES
 
     @classmethod
-    def fit(cls, scores, weights):
+    def fit(cls, scores, weights, prior_games=JOINT_PRIOR_GAMES):
         """Fit using only completed training games, with one weight per game."""
-        scores = np.asarray(scores, dtype=int)
+        scores = np.asarray(scores, dtype=float)
         weights = np.asarray(weights, dtype=float)
-        if scores.max() > MAXIMUM_OBSERVED_SCORE or scores.min() < 0:
+        if not np.isfinite(prior_games) or prior_games <= 0:
+            raise ValueError("The joint prior must have positive finite weight.")
+        if scores.ndim != 2 or scores.shape[1] != 2 or not len(scores):
+            raise ValueError("Training scores must be a nonempty array of score pairs.")
+        if (weights.shape != (len(scores),) or not np.all(np.isfinite(weights))
+                or np.any(weights < 0) or not np.any(weights > 0)):
+            raise ValueError("Game weights must be finite, nonnegative, and have positive mass.")
+        if (not np.all(np.isfinite(scores)) or np.any(scores != np.floor(scores))
+                or scores.max() > MAXIMUM_OBSERVED_SCORE or scores.min() < 0):
             raise ValueError("Training scores exceed the supported modeling range.")
+        scores, weights = scores[weights > 0].astype(int), weights[weights > 0]
         # Leave ample tail support beyond even the highest training score.
         maximum = max(MINIMUM_SCORE_SUPPORT, int(scores.max()) + 40)
         grid = np.arange(maximum + 1, dtype=float)
@@ -55,9 +65,9 @@ class ScoreDistribution:
         np.add.at(observed, (scores[:, 1], scores[:, 0]), weights / 2.0)
         # Pool both orientations: venue belongs in the expected-score model,
         # rather than being counted again in this league-wide score prior.
-        base = observed + JOINT_PRIOR_GAMES * np.outer(marginal, marginal)
+        base = observed + prior_games * np.outer(marginal, marginal)
         base /= base.sum()
-        return cls(base=base)
+        return cls(base=base, prior_games=float(prior_games))
 
     def baseline(self, allow_ties=True):
         if allow_ties:
@@ -87,32 +97,59 @@ class ScoreDistribution:
         # Zero expectations are boundary solutions, not finite exponential tilts.
         keep = ((rows == 0) | (target[0] > 0)) & ((columns == 0) | (target[1] > 0))
         rows, columns = rows[keep], columns[keep]
-        values = np.column_stack((rows, columns)) / 10.0
+        home_values, away_values = rows / 10.0, columns / 10.0
         log_base = np.log(base[rows, columns])
         scaled_target = target / 10.0
 
+        def moments(mass):
+            return np.array([np.sum(mass * home_values), np.sum(mass * away_values)])
+
         def objective(theta):
-            logits = log_base + values @ theta
+            logits = log_base + home_values * theta[0] + away_values * theta[1]
             normalizer = logsumexp(logits)
             mass = np.exp(logits - normalizer)
             return (
                 float(normalizer - theta @ scaled_target),
-                mass @ values - scaled_target,
+                moments(mass) - scaled_target,
             )
 
         solution = minimize(
             objective, np.zeros(2), jac=True, method="BFGS",
             options={"gtol": 1e-9, "maxiter": 200},
         )
-        logits = log_base + values @ solution.x
+        logits = log_base + home_values * solution.x[0] + away_values * solution.x[1]
         mass = np.exp(logits - logsumexp(logits))
-        if np.max(np.abs(mass @ values * 10.0 - target)) > 1e-5:
+        if not np.all(np.isfinite(mass)) or np.max(np.abs(moments(mass) * 10.0 - target)) > 1e-5:
             raise ValueError("The score distribution could not match expected points.")
         result = np.zeros_like(self.base)
         result[rows, columns] = mass
         if home_mean == away_mean:
             result = (result + result.T) / 2.0
         return result
+
+    @staticmethod
+    def summarize(probabilities, coverage=0.8):
+        """Derive win/tie chances and a central margin interval from one PMF."""
+        size = len(probabilities)
+        points = np.arange(size)
+        margins = points[:, None] - points[None, :]
+        margin_mass = np.bincount(
+            (margins + size - 1).ravel(), weights=probabilities.ravel(),
+            minlength=2 * size - 1,
+        )
+        support = np.arange(1 - size, size)
+        cumulative = np.cumsum(margin_mass)
+        tail = (1.0 - coverage) / 2.0
+        low = int(support[min(np.searchsorted(cumulative, tail), len(support) - 1)])
+        high = int(support[min(np.searchsorted(cumulative, 1.0 - tail), len(support) - 1)])
+        margin_mean = float(margin_mass @ support)
+        return {
+            "home_win_probability": float(np.tril(probabilities, -1).sum()),
+            "away_win_probability": float(np.triu(probabilities, 1).sum()),
+            "tie_probability": float(np.trace(probabilities)),
+            "margin_stddev": float(np.sqrt(margin_mass @ (support - margin_mean) ** 2)),
+            "margin_interval": {"coverage": coverage, "low": low, "high": high},
+        }
 
     @staticmethod
     def top_scorelines(probabilities, home_team, away_team, count=3):

@@ -1,107 +1,112 @@
-# Predicting an NFL final score
+# Forecast algorithm and API
 
-The forecast chooses the most probable pair of integer scores from a joint
-distribution. Expected average points remain separate: predicting an exact
-result and minimizing average point error are different objectives. A mode
-need not be close to the mean, and the single most likely result can favor a
-different team from the favorite across all outcomes.
+Model version: `ridge-joint-score-v3`.
 
-## Algorithm
+## Expected points
 
-1. **Estimate expected points.** Fit an L2-regularized linear model to both
-   teams' scores in completed games. Features represent scoring team, opposing
-   defense, and the home team's venue effect. Neutral games have no venue
-   effect. Weights decay with a 365-day half-life; ridge alpha is fixed at 20.
-2. **Learn final-score frequencies.** Form a recency-weighted histogram of
-   score pairs, splitting each game's weight equally between both orientations.
-   This pools league scoring patterns while leaving home advantage to the
-   regression. It retains dependence between scores, common football totals,
-   and the relative scarcity of tied finals.
-3. **Regularize the histogram.** Add a prior equivalent to 32 games with
-   independent scores from the league's pooled marginal distribution. Smooth
-   those marginals with two pseudo-observations from a discrete Gaussian,
-   centered on training scores with their weighted standard deviation
-   (minimum seven points). This gives unseen combinations positive probability
-   without allowing sparse historical pairs to determine the entire model.
-4. **Adjust to this matchup.** Let `q(h,a)` be the smoothed joint histogram.
-   Solve for two parameters so that
-   `p(h,a) = q(h,a) exp(theta_home*h + theta_away*a) / Z`
-   has the regression's expected home and away points. This is exponential
-   tilting: the distribution closest to `q` in relative entropy subject to the
-   two mean constraints. Use log-space normalization and an analytic gradient;
-   verify the resulting means within 0.00001 points. For postseason games,
-   remove tied outcomes before solving. Zero-point expectations are handled
-   explicitly as boundary distributions.
-5. **Choose the final score.** Return the joint mode, its probability, and the
-   next two most probable pairs. Break equal probabilities deterministically
-   using franchise codes, so reversing a neutral matchup reverses its scores.
+For scoring team `i` against opponent `j`, the regression estimates:
 
-The support is every integer from zero through the larger of 100 and the
-highest training score plus 40, except one unless observed in training. A
-one-point final requires an exceptionally rare conversion safety; it is a
-model limitation rather than a claim that such scores are impossible. Scores
-beyond finite support are also excluded. Zero-probability alternatives are
-never displayed.
-Scores greater than 200 are rejected as unsupported input to bound memory
-allocation; this is an implementation limit, not a football scoring rule.
+`points = league intercept + offense_i + defense_j + venue effect`.
 
-These components use established statistical methods. Their particular
-combination here is a custom, experimental NFL model. No scoring-event rates
-are inferred from final points, and no season-end EPA aggregates enter a
-historical prediction.
+A non-neutral game adds half of the home team's venue effect to its score and
+subtracts half from the away score. The venue effect is a shared league parameter
+plus a regularized team deviation. This partial pooling prevents teams with
+little home history from having their entire home advantage shrunk toward zero.
+Ridge alpha is 20; game weights decay with a 365-day half-life. These two
+parameters remain fixed rather than being optimized on the reported test games.
 
-## Historical evaluation
+## Integer final scores
 
-Train on the first 80% of distinct game dates, then keep that model fixed for
-the remaining dates. The regression, histogram, smoothing prior, tail support,
-and uncertainty estimates all use training results only. Test scores cannot
-affect predictions. Parameters are fixed assumptions, not optimized against
-this holdout. The production model subsequently refits on all eligible games.
+The base distribution pools observed `(home, away)` score pairs symmetrically,
+weighted by recency. A prior shrinks the joint histogram toward independent
+league marginal scores. Marginals receive two pseudo-observations from a
+nonnegative discrete Gaussian centered on training scores, using training
+standard deviation with a seven-point floor.
 
-The local nflverse snapshot evaluated with an exclusive 2026-09-17 cutoff has
-865 completed regular-season and postseason games. Its chronological split
-uses 705 training games through 2025-11-03 and 160 test games from 2025-11-06
-through 2026-09-13.
+The joint prior weight is chosen from **32, 128, or 512 games** using natural-log
+loss on inner validation dates. Selection requires at least 200 input games,
+100 inner training games, and 20 usable validation games. The split uses the
+first 80% of distinct training dates; at most 48 deterministically spaced later
+games bound runtime. Each candidate's regression and histogram see only the
+inner training dates. The selected prior is refit on all supplied training
+results. Insufficient histories use the fixed 32-game prior.
 
-| Metric | Result |
-| --- | ---: |
-| Expected points MAE, per team | 7.92 points |
-| Expected points RMSE, per team | 9.83 points |
-| Integer final-score MAE, per team | 8.03 points |
-| Both final scores correct | 2 / 160 (1.25%) |
-| Both correct by rounding expected points | 0 / 160 |
+For matchup means `mu_home` and `mu_away`, solve
 
-The small exact-hit count does not establish superiority. The mode's point
-error is slightly higher than the means' point error, as different objectives
-would suggest. The API also reports natural-log loss for the full joint
-distribution and the same league distribution without matchup adjustments.
-Lower log loss is better; probabilities are floored at `1e-15` for evaluation,
-including outcomes outside support. Both models exclude ties in postseason
-evaluation. These probabilities have not been calibrated on a separate sample.
+`p(h,a) = q(h,a) * exp(theta_home*h + theta_away*a) / Z`
 
-Reproduce the full metrics from a downloaded nflverse schedule parquet:
+subject to the two expected scores equaling those means. This minimum-relative-
+entropy exponential tilt preserves common NFL score patterns. Computation uses
+log-space normalization, an analytic gradient, and a 0.00001-point convergence
+check. Zero means are boundary distributions. The predicted integer result is
+the joint mode, with two alternatives. Franchise-code ordering breaks equal
+probabilities consistently under neutral matchup reversal.
 
-```powershell
-python -m src.forecast_backtest --schedules data/forecast/schedules.parquet --before 2026-09-17
-```
+Support runs from zero through `max(100, highest training score + 40)`, excluding
+one unless observed in training. A one-point final is an exceptionally rare
+conversion-safety outcome, not a mathematical impossibility. Input scores above
+200 are unsupported to bound memory; this is not a football rule. Nonfinite,
+negative, fractional and incomplete scores are rejected, identical fixtures
+are deduplicated, and conflicting completed results fail explicitly.
 
-The command outputs JSON containing the snapshot SHA-256, model assumptions,
-and evaluation. Snapshot used above:
-`fc1fef7fa8c5a754599a5c355ec72bfcca1a8ba6f931150b9aaf17237788f472`.
-The ignored data file is not distributed with the repository; another snapshot
-can produce different results.
+## One coherent probability distribution
 
-## Limits and references
+- Home win: sum `p(h,a)` where `h > a`.
+- Away win: sum `p(h,a)` where `h < a`.
+- Tie: sum `p(h,a)` where `h == a`.
+- Margin interval: the 10th and 90th percentiles of `h - a`.
 
-Injuries, starting quarterbacks, weather, rest, roster changes, and betting
-markets are not features. Win chances and the margin range retain the existing
-normal-margin approximation, so they are separate estimates from the discrete
-score distribution. The model does not simulate drives or overtime. Further
-changes should be assessed on additional untouched seasons before claiming an
-accuracy improvement.
+The three outcome probabilities sum to one. Postseason ties are removed before
+tilting, preserving the two mean constraints. The favorite follows total win
+probability, which can differ from the winner in the single most likely
+scoreline. A mode and a mean solve different prediction objectives.
 
-- [scikit-learn: Ridge regression](https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Ridge.html)
-- [R boot package: exponential tilting](https://web.mit.edu/~r/current/lib/R/library/boot/html/exp.tilt.html)
-- [Theory-coherent forecasting: distributions with moment restrictions](https://www.sciencedirect.com/science/article/pii/S0304407614000736)
-- [Gneiting: Making and Evaluating Point Forecasts](https://arxiv.org/abs/0912.0902)
-- [scikit-learn: chronological cross-validation](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html)
+## Evaluation
+
+Begin with the first 60% of distinct dates, then evaluate four consecutive
+blocks from the remaining dates. Each model is fit only on dates strictly
+before its test block. Earlier test blocks may enter later training windows;
+no game is evaluated against a model trained on its own date or a later date.
+Inner smoothing selection is repeated independently inside each training fold.
+
+Report per-team MAE/RMSE, mode-score MAE, oriented exact-score accuracy, rounded-
+mean accuracy, scoreline log loss, winner accuracy, Brier scores, and interval
+coverage/width. Baselines use training-only league average points, a smoothed
+historical home-win rate, and the untilted score distribution. Log loss uses a
+`1e-15` floor for zero/out-of-support probabilities. Binary Brier and winner
+accuracy exclude actual ties and use home probability conditional on a decisive
+result. The separate three-outcome Brier includes ties.
+
+Five fixed reliability bins expose average predicted versus observed home-win
+rates and sample counts. They diagnose calibration; they are not a fitted
+calibrator or proof of calibration. Fold boundaries and smoothing-selection
+records are returned for auditing.
+
+The production model refits every eligible completed game before the service
+cutoff after evaluation. Simulated histories never enter production training.
+
+## API
+
+- `GET /api/forecasts`: next 16 eligible fixtures, team codes and model metadata.
+- `GET /api/forecast?home_team=BUF&away_team=MIA&neutral=false`: hypothetical
+  regular-season matchup using the same fitted model.
+
+`home_score` and `away_score` remain decimal expected points. `score_prediction`
+and `top_scorelines` contain integer scores with probabilities. `margin` is
+always home minus away; `total` is the sum of expected points. `favorite` is
+based on win probability. `allow_ties` is false for scheduled postseason games.
+`margin_stddev` now describes the joint distribution's margin uncertainty.
+
+**v3 probability change:** `home_win_probability + away_win_probability` is
+`1 - tie_probability`, not always one. Clients needing a decisive-game
+probability can divide either win probability by their sum. For older responses
+without `tie_probability`, the frontend uses zero as a compatibility fallback.
+
+## Limits
+
+This is a custom experimental combination of established techniques. No
+quarterback/injury, weather, rest, roster, betting-market or drive features are
+used. It does not simulate overtime. Broad NFL score patterns are pooled across
+seasons. Small exact-hit counts are unstable, and finite support omits very rare
+outcomes. The historical comparisons are development evidence, not an untouched
+future-season guarantee. See [research and results](application-research.md).

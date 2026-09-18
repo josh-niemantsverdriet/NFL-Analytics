@@ -5,3 +5,7 @@ __pycache__/
 data/
 local.settings.json
 *.pyc
+frontend/
+node_modules/
+tests/
+docs/

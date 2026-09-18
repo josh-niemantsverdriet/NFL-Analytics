@@ -23,6 +23,10 @@ class DashboardLoaderTests(unittest.TestCase):
             rows_for_columns(dataframe, ("game_id", "score", "missing")),
             [("game-1", None, None)]
         )
+        self.assertEqual(
+            rows_for_columns(pl.DataFrame({"score": [float("inf"), -float("inf"), 0.0]}), ("score",)),
+            [(None,), (None,), (0.0,)],
+        )
 
     @patch("src.dashboard_loader._get_connection")
     def test_refresh_team_analytics_replaces_snapshot_rows(self, get_connection):

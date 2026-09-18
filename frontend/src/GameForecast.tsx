@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { Link } from "react-router";
 import "./GameForecast.css";
+import { fetchData } from "./api";
 
 interface ScorePrediction {
   home_score: number;
@@ -19,6 +20,8 @@ interface Forecast {
   top_scorelines?: ScorePrediction[];
   home_win_probability: number;
   away_win_probability: number;
+  tie_probability?: number;
+  low_data?: boolean;
   favorite: string | null;
   margin: number;
   total: number;
@@ -34,6 +37,11 @@ interface ModelInfo {
   history_seasons: number[];
   evaluation: {
     games: number;
+    method?: string;
+    folds?: { games: number; training_through: string; from_date: string; through_date: string }[];
+    baseline_score_mae?: number | null;
+    baseline_brier_score?: number | null;
+    calibration_bins?: { games: number; predicted: number | null; observed: number | null }[];
     from_date: string | null;
     through_date: string | null;
     margin_mae: number | null;
@@ -86,8 +94,6 @@ interface MatchupRequest {
   neutral: boolean;
 }
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
-
 function percent(value: number | null | undefined, decimals = 1) {
   return value == null ? "Unavailable" : `${(value * 100).toFixed(decimals)}%`;
 }
@@ -110,24 +116,9 @@ function signedPoints(value: number) {
   return `${value > 0 ? "+" : ""}${value.toFixed(1)}`;
 }
 
-async function fetchData<T>(url: string, signal: AbortSignal): Promise<T> {
-  const response = await fetch(url, { signal });
-  if (!response.ok) {
-    let message = `Forecast service returned ${response.status}. Please try again.`;
-    try {
-      const body: { error?: string } = await response.json();
-      if (body.error) message = body.error;
-    } catch {
-      // An unavailable service can return HTML instead of an API error.
-    }
-    throw new Error(message);
-  }
-  return response.json();
-}
-
 function Scoreboard({ result, game }: { result: ForecastResponse; game?: UpcomingGame }) {
   const forecast = result.forecast;
-  const margin = Math.abs(forecast.margin);
+  const tieProbability = forecast.tie_probability ?? 0;
   const scorePrediction = forecast.score_prediction;
   const alternatives = scorePrediction
     ? (forecast.top_scorelines ?? []).filter((score) =>
@@ -182,16 +173,17 @@ function Scoreboard({ result, game }: { result: ForecastResponse; game?: Upcomin
       <div className="forecast-probability">
         <div className="forecast-probability-labels">
           <span className="forecast-away-color"><strong>{forecast.away_team}</strong> {percent(forecast.away_win_probability)}</span>
-          <span className="forecast-probability-caption">WIN CHANCE</span>
+          <span className="forecast-probability-caption">WIN CHANCE{tieProbability > 0 && <small>Tie {percent(tieProbability)}</small>}</span>
           <span className="forecast-home-color"><strong>{forecast.home_team}</strong> {percent(forecast.home_win_probability)}</span>
         </div>
         <div className="forecast-probability-bar" aria-hidden="true">
           <span className="forecast-probability-away" style={{ width: `${forecast.away_win_probability * 100}%` }} />
+          {tieProbability > 0 && <span className="forecast-probability-tie" style={{ width: `${tieProbability * 100}%` }} />}
           <span className="forecast-probability-home" style={{ width: `${forecast.home_win_probability * 100}%` }} />
         </div>
         <p className="forecast-favorite">
           {forecast.favorite
-            ? <><strong>{forecast.favorite}</strong> has the edge by {margin.toFixed(1)} expected points.</>
+            ? <><strong>{forecast.favorite}</strong> has the higher win chance. Expected {forecast.home_team} margin: {signedPoints(forecast.margin)} points.</>
             : "Too close to call: the model projects an even matchup."}
         </p>
       </div>
@@ -207,11 +199,12 @@ function Scoreboard({ result, game }: { result: ForecastResponse; game?: Upcomin
           <small>Negative means {forecast.away_team} ahead; positive means {forecast.home_team} ahead.</small>
         </div>
       </div>
+      {forecast.low_data && <p className="forecast-board-note" role="status">Limited history: at least one team has fewer than eight completed games.</p>}
       <p className="forecast-board-note">
         {scorePrediction
           ? "The predicted final score is the model’s most likely single result; many other outcomes are possible. Expected averages summarize the full score distribution."
           : "Scores are expected averages."}
-        {" "}Win chances are model estimates with ties excluded; individual games can land well outside the projection.
+        {" "}Scores, win chances and margin ranges come from one model; they remain estimates.
       </p>
     </section>
   );
@@ -219,55 +212,45 @@ function Scoreboard({ result, game }: { result: ForecastResponse; game?: Upcomin
 
 function ModelDetails({ model, cutoff }: { model: ModelInfo; cutoff: string }) {
   const evaluation = model.evaluation;
+  const pointError = (value: number | null | undefined) => value == null ? "Unavailable" : `${value.toFixed(2)} pts`;
+  const bins = evaluation.calibration_bins?.filter((bin) => bin.games > 0) ?? [];
   return (
     <details className="forecast-method">
       <summary>How the forecast works <span>Method & track record</span></summary>
       <div className="forecast-method-content">
-        <h3>{model.name}</h3>
         <p>{model.method}</p>
-        <p>
-          Trained on {model.training_games.toLocaleString()} games from {model.history_seasons.join(", ")},
-          through {dateLabel(model.trained_through)}. Results on or after {dateLabel(cutoff)} are excluded.
-        </p>
-        <h3>Tested on games it had not seen</h3>
-        {evaluation.games > 0 ? (
-          <>
-            <p>
-              {evaluation.games.toLocaleString()} games from {dateLabel(evaluation.from_date)} to {dateLabel(evaluation.through_date)}.
-              This historical test is a useful check, not a promise of future accuracy.
-            </p>
-            <p>
-              For this test, a model trained only on earlier results was kept unchanged throughout the test dates.
-              The forecasts above use a model trained again with all available history before the cutoff.
-            </p>
-            <dl className="forecast-evaluation">
-              <div><dt>Correct winner{evaluation.decisive_games !== undefined ? ` · ${evaluation.decisive_games.toLocaleString()} games` : ""}</dt><dd>{percent(evaluation.winner_accuracy)}</dd></div>
-              <div><dt>Always picking home</dt><dd>{percent(evaluation.home_baseline_accuracy)}</dd></div>
-              <div><dt>Average margin error</dt><dd>{evaluation.margin_mae === null ? "Unavailable" : `${evaluation.margin_mae.toFixed(1)} pts`}</dd></div>
-              <div><dt>Probability error (Brier score)</dt><dd>{evaluation.brier_score === null ? "Unavailable" : evaluation.brier_score.toFixed(3)}</dd></div>
-              {evaluation.score_mae != null && <div><dt>Expected score error (MAE per team)</dt><dd>{evaluation.score_mae.toFixed(1)} pts</dd></div>}
-              {evaluation.score_rmse != null && <div><dt>Expected score error (RMSE per team)</dt><dd>{evaluation.score_rmse.toFixed(1)} pts</dd></div>}
-              {evaluation.predicted_score_mae != null && <div><dt>Predicted final score error (MAE per team)</dt><dd>{evaluation.predicted_score_mae.toFixed(1)} pts</dd></div>}
-              {evaluation.exact_score_accuracy != null && <div><dt>Both final scores correct</dt><dd>{percent(evaluation.exact_score_accuracy, 2)}</dd></div>}
-              {evaluation.rounded_score_accuracy != null && <div><dt>Both scores correct by rounding averages</dt><dd>{percent(evaluation.rounded_score_accuracy, 2)}</dd></div>}
-              {evaluation.scoreline_log_loss != null && <div><dt>Exact score probability error (log loss)</dt><dd>{evaluation.scoreline_log_loss.toFixed(3)}</dd></div>}
-              {evaluation.baseline_scoreline_log_loss != null && <div><dt>League baseline exact score probability error</dt><dd>{evaluation.baseline_scoreline_log_loss.toFixed(3)}</dd></div>}
-            </dl>
-            <p className="forecast-small">Winner accuracy excludes tied games. Lower margin and probability errors are better.</p>
-            {evaluation.score_mae != null && <p className="forecast-small">
-              Score errors measure points per team. MAE is the average absolute error; RMSE gives larger misses more weight.
-              Exact score accuracy requires both teams’ final scores to match, compared with simply rounding their expected averages.
-              Lower score errors and log loss are better.
-            </p>}
-            {evaluation.margin_interval_coverage != null && <p>
-              The 80% model margin ranges contained the actual margin in {percent(evaluation.margin_interval_coverage)} of the {evaluation.games.toLocaleString()} test games.
-              Observed coverage can differ from the model’s target.
-            </p>}
-          </>
-        ) : (
-          <p>There are not enough historical games to report a separate accuracy test yet.</p>
-        )}
-        {model.limitations.length > 0 && <><h3>What to keep in mind</h3><ul>{model.limitations.map((limitation) => <li key={limitation}>{limitation}</li>)}</ul></>}
+        <p>Trained on {model.training_games.toLocaleString()} games from {model.history_seasons.join(", ")},
+          through {dateLabel(model.trained_through)}. Results on or after {dateLabel(cutoff)} are excluded.</p>
+        <h3>Historical performance</h3>
+        {evaluation.games > 0 ? <>
+          <p>{evaluation.games.toLocaleString()} games from {dateLabel(evaluation.from_date)} to {dateLabel(evaluation.through_date)}.
+            {evaluation.method === "expanding_window"
+              ? ` The model was retrained before each of ${evaluation.folds?.length ?? 0} test blocks using only earlier dates.`
+              : " The test model used only results before the test period."}
+            {" "}Current forecasts use all completed history before the cutoff.</p>
+          <dl className="forecast-evaluation">
+            <div><dt>Expected points error per team</dt><dd>{pointError(evaluation.score_mae)}</dd></div>
+            {evaluation.baseline_score_mae != null && <div><dt>League-average points error</dt><dd>{pointError(evaluation.baseline_score_mae)}</dd></div>}
+            <div><dt>Correct winner</dt><dd>{percent(evaluation.winner_accuracy)}</dd></div>
+            <div><dt>Always choosing home</dt><dd>{percent(evaluation.home_baseline_accuracy)}</dd></div>
+            <div><dt>Both final scores correct</dt><dd>{percent(evaluation.exact_score_accuracy, 2)}</dd></div>
+            <div><dt>Both correct by rounding averages</dt><dd>{percent(evaluation.rounded_score_accuracy, 2)}</dd></div>
+            <div><dt>Win probability error (Brier)</dt><dd>{evaluation.brier_score?.toFixed(3) ?? "Unavailable"}</dd></div>
+            {evaluation.baseline_brier_score != null && <div><dt>Historical home-win baseline error</dt><dd>{evaluation.baseline_brier_score.toFixed(3)}</dd></div>}
+            <div><dt>Exact-score probability error (log loss)</dt><dd>{evaluation.scoreline_log_loss?.toFixed(3) ?? "Unavailable"}</dd></div>
+            <div><dt>League scoreline baseline error</dt><dd>{evaluation.baseline_scoreline_log_loss?.toFixed(3) ?? "Unavailable"}</dd></div>
+          </dl>
+          <p className="forecast-small">Lower point and probability errors are better. Winner accuracy and binary Brier scores exclude ties; win probabilities for that check condition on a decisive result. Exact-score accuracy requires both final scores to match.</p>
+          {evaluation.margin_interval_coverage != null && <p>The 80% model margin ranges contained the actual margin in {percent(evaluation.margin_interval_coverage)} of the test games.</p>}
+          {bins.length > 0 && <>
+            <h3>Do win chances match the results?</h3>
+            <p className="forecast-small">Home-win forecasts grouped by probability, excluding ties. Small groups are uncertain; this check does not establish calibration.</p>
+            <table className="forecast-calibration"><thead><tr><th scope="col">Predicted</th><th scope="col">Observed</th><th scope="col">Games</th></tr></thead>
+              <tbody>{bins.map((bin, index) => <tr key={index}><td>{percent(bin.predicted)}</td><td>{percent(bin.observed)}</td><td>{bin.games}</td></tr>)}</tbody>
+            </table>
+          </>}
+        </> : <p>More history is needed for a separate accuracy test.</p>}
+        {model.limitations.length > 0 && <><h3>Model limits</h3><ul>{model.limitations.map((limitation) => <li key={limitation}>{limitation}</li>)}</ul></>}
       </div>
     </details>
   );
@@ -290,7 +273,7 @@ export default function GameForecast() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchData<ScheduleResponse>(`${API_BASE}/api/forecasts`, controller.signal)
+    fetchData<ScheduleResponse>(`/api/forecasts`, controller.signal)
       .then((data) => {
         if (controller.signal.aborted) return;
         setSchedule(data);
@@ -347,7 +330,7 @@ export default function GameForecast() {
     setResult(null);
     try {
       const query = new URLSearchParams({ ...matchup, neutral: String(matchup.neutral) });
-      const data = await fetchData<ForecastResponse>(`${API_BASE}/api/forecast?${query}`, controller.signal);
+      const data = await fetchData<ForecastResponse>(`/api/forecast?${query}`, controller.signal);
       if (!controller.signal.aborted) setResult(data);
     } catch (error) {
       if (!controller.signal.aborted) {
@@ -369,7 +352,7 @@ export default function GameForecast() {
   const activeModel = result?.model ?? schedule?.model;
 
   return (
-    <main className="page forecast-page">
+    <main id="main-content" className="page forecast-page">
       <Link className="forecast-back" to="/">← NFL Analytics</Link>
       <header className="forecast-hero">
         <div>

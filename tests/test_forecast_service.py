@@ -102,6 +102,15 @@ class ForecastServiceTests(unittest.TestCase):
             service.upcoming_forecasts(self.now)
         self.model.predict.assert_called_once_with("BUF", "MIA", neutral=True, allow_ties=False)
 
+    def test_malformed_schedule_rows_do_not_break_valid_upcoming_games(self):
+        rows = [None, {}, game("date", "bad-date"), game("clock", "2026-09-14", gametime="unknown"),
+                game("self", "2026-09-14", away_team="BUF"), game("venue", "2026-09-14", location="Unknown"),
+                game("good", "2026-09-14")]
+        state = service.ForecastState(self.model, rows, date(2026, 9, 13), "test", 100)
+        with patch.object(service, "get_forecast_state", return_value=state):
+            data = service.upcoming_forecasts(self.now)
+        self.assertEqual([row["game_id"] for row in data["games"]], ["good"])
+
 
 class ForecastRouteTests(unittest.TestCase):
     def request(self, **params):

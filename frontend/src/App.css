@@ -903,3 +903,7 @@ h2 {
     flex: 1;
   }
 }
+
+.skip-link { position: absolute; left: 1rem; top: -5rem; z-index: 100; padding: .75rem 1rem; background: #fff; color: #102330; }
+.skip-link:focus { top: 1rem; }
+.app-navigation a[aria-current="page"] { color: #8ff3df; text-decoration: underline; text-underline-offset: .35em; }

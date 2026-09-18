@@ -43,19 +43,31 @@ def _training_cutoff(now: datetime) -> date:
     return local.date() - timedelta(days=int(local.hour < 8))
 
 
+def _valid_schedules(rows):
+    """A malformed feed row must not take down every otherwise valid matchup."""
+    valid = []
+    for row in rows:
+        try:
+            if row.get("game_type") not in POSTSEASON_GAME_TYPES | {"REG"}:
+                continue
+            _game_date(row)
+            home, away = normalize_team(row["home_team"]), normalize_team(row["away_team"])
+            location = str(row.get("location") or "Home").strip().lower()
+            if home == away or location not in {"home", "neutral"}:
+                continue
+            valid.append(row | {"home_team": home, "away_team": away, "location": location})
+        except (KeyError, TypeError, ValueError, AttributeError):
+            continue
+    return valid
+
+
 def _load_state(now: datetime) -> ForecastState:
     cutoff = _training_cutoff(now)
     # January/February belong to the season that started the previous year.
     local = now.astimezone(EASTERN)
     season = local.year - int(local.month < 3)
     seasons = list(range(season - 3, season + 1))
-    schedules = nfl.load_schedules(seasons).to_dicts()
-    schedules = [
-        game for game in schedules
-        if game.get("game_type") in {"REG", "WC", "DIV", "CON", "SB"}
-        and game.get("gameday") and game.get("home_team")
-        and game.get("away_team")
-    ]
+    schedules = _valid_schedules(nfl.load_schedules(seasons).to_dicts())
     completed = [
         game for game in schedules
         if _game_date(game) < cutoff
@@ -100,15 +112,16 @@ def upcoming_forecasts(now: datetime | None = None) -> dict:
     result["teams"] = sorted(state.model.metadata["teams"])
     candidates = []
     seen = set()
-    for game in state.schedules:
+    for game in _valid_schedules(state.schedules):
         if game.get("home_score") is not None or game.get("away_score") is not None:
             continue
         game_date = _game_date(game)
         kickoff_time = game.get("gametime")
         if kickoff_time:
-            kickoff = datetime.combine(
-                game_date, time.fromisoformat(str(kickoff_time)), EASTERN
-            )
+            try:
+                kickoff = datetime.combine(game_date, time.fromisoformat(str(kickoff_time)), EASTERN)
+            except ValueError:
+                continue
         else:
             # A game with an unknown start time is selectable only before its
             # date begins; never imply it is still upcoming during that day.

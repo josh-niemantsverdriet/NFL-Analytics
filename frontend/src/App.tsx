@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, Route, Routes } from "react-router";
+import { NavLink, Route, Routes } from "react-router";
 
 import "./App.css";
 
@@ -7,17 +7,8 @@ import LeagueRankings from "./LeagueRankings";
 import MatchupAnalyzer from "./MatchupAnalyzer";
 import TeamPage from "./TeamPage";
 import GameForecast from "./GameForecast";
-
-
-interface Team {
-  rank: number;
-  team: string;
-  plays: number;
-  epa_per_play: number | null;
-  success_rate: number | null;
-  pass_epa_per_play: number | null;
-  rush_epa_per_play: number | null;
-}
+import TeamAnalyticsProvider from "./TeamAnalyticsProvider";
+import { fetchData } from "./api";
 
 
 interface PlayerLeader {
@@ -44,7 +35,6 @@ interface DashboardData {
   season: number;
   snapshot_date: string;
 
-  top_offenses: Team[];
 
   leaders: {
     passing: PlayerLeader[];
@@ -53,28 +43,6 @@ interface DashboardData {
   };
 
   recent_games: Game[];
-}
-
-
-function formatEPA(
-  value: number | null
-) {
-  if (value === null) {
-    return "—";
-  }
-
-  return `${value >= 0 ? "+" : ""}${value.toFixed(3)}`;
-}
-
-
-function formatPercent(
-  value: number | null
-) {
-  if (value === null) {
-    return "—";
-  }
-
-  return `${(value * 100).toFixed(1)}%`;
 }
 
 
@@ -169,14 +137,7 @@ function HomePage() {
     const controller = new AbortController();
     const loadDashboard = async () => {
       try {
-        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
-        const response = await fetch(`${apiBaseUrl}/api/dashboard`, {
-          signal: controller.signal,
-        });
-        if (!response.ok) {
-          throw new Error(`Dashboard API returned ${response.status}`);
-        }
-        const data: DashboardData = await response.json();
+        const data = await fetchData<DashboardData>("/api/dashboard", controller.signal);
         if (!controller.signal.aborted) setDashboard(data);
       } catch (err) {
         if (!controller.signal.aborted) {
@@ -193,7 +154,7 @@ function HomePage() {
 
   if (loading) {
     return (
-      <main className="page centered">
+      <main id="main-content" className="page centered">
 
         <h1>
           NFL Analytics
@@ -210,7 +171,7 @@ function HomePage() {
 
   if (error || !dashboard) {
     return (
-      <main className="page centered">
+      <main id="main-content" className="page centered">
 
         <h1>
           NFL Analytics
@@ -236,7 +197,7 @@ function HomePage() {
 
 
   return (
-    <main className="page">
+    <main id="main-content" className="page">
 
       <header className="hero">
 
@@ -278,115 +239,6 @@ function HomePage() {
 
 
       <LeagueRankings />
-
-
-      <section className="dashboard-section">
-
-        <div className="section-title">
-
-          <div>
-
-            <p className="eyebrow">
-              TEAM ANALYTICS
-            </p>
-
-            <h2>
-              Top Offenses
-            </h2>
-
-          </div>
-
-          <span>
-            EPA / Play
-          </span>
-
-        </div>
-
-
-        <div className="power-grid">
-
-          {dashboard.top_offenses.map(
-            (team) => (
-
-              <article
-                className="team-card"
-                key={team.team}
-              >
-
-                <div className="team-card-top">
-
-                  <span className="team-rank">
-                    #{team.rank}
-                  </span>
-
-                  <span className="team-code">
-                    {team.team}
-                  </span>
-
-                </div>
-
-
-                <div className="epa-number">
-                  {formatEPA(
-                    team.epa_per_play
-                  )}
-                </div>
-
-
-                <span className="epa-label">
-                  EPA / PLAY
-                </span>
-
-
-                <div className="team-stats">
-
-                  <div>
-                    <span>
-                      Success
-                    </span>
-
-                    <strong>
-                      {formatPercent(
-                        team.success_rate
-                      )}
-                    </strong>
-                  </div>
-
-
-                  <div>
-                    <span>
-                      Pass EPA
-                    </span>
-
-                    <strong>
-                      {formatEPA(
-                        team.pass_epa_per_play
-                      )}
-                    </strong>
-                  </div>
-
-
-                  <div>
-                    <span>
-                      Rush EPA
-                    </span>
-
-                    <strong>
-                      {formatEPA(
-                        team.rush_epa_per_play
-                      )}
-                    </strong>
-                  </div>
-
-                </div>
-
-              </article>
-            )
-          )}
-
-        </div>
-
-      </section>
 
 
       <section className="dashboard-section">
@@ -559,9 +411,10 @@ function HomePage() {
 function App() {
   return (
     <>
+    <a className="skip-link" href="#main-content">Skip to content</a>
     <nav className="app-navigation" aria-label="Main navigation">
-      <Link to="/">Dashboard</Link>
-      <Link to="/forecast">Game Forecasts <span>NEW</span></Link>
+      <NavLink to="/" end>Dashboard</NavLink>
+      <NavLink to="/forecast">Game Forecasts</NavLink>
     </nav>
     <Routes>
 
@@ -569,7 +422,7 @@ function App() {
 
       <Route
         path="/"
-        element={<HomePage />}
+        element={<TeamAnalyticsProvider><HomePage /></TeamAnalyticsProvider>}
       />
 
       <Route
@@ -577,6 +430,7 @@ function App() {
         element={<TeamPage />}
       />
 
+      <Route path="*" element={<main id="main-content" className="page"><h1>Page not found</h1><NavLink to="/">Back to dashboard</NavLink></main>} />
     </Routes>
     </>
   );

@@ -1,0 +1,338 @@
+{
+  "games_available": 865,
+  "comparison": "Identical expanding-window dates; v2 reconstructed from pre-change local source",
+  "before": {
+    "score_mae": 7.736771162000291,
+    "baseline_score_mae": 8.05245052767096,
+    "predicted_score_mae": 8.377245508982035,
+    "exact_score_accuracy": 0.0029940119760479044,
+    "rounded_score_accuracy": 0.0,
+    "scoreline_log_loss": 7.694332067922046,
+    "baseline_scoreline_log_loss": 7.782617996685482,
+    "margin_mae": 10.771411326960925,
+    "margin_interval_coverage": 0.7485029940119761,
+    "margin_interval_width": 32.84200842355491,
+    "outcome_brier_score": 0.4705096523305557,
+    "method": "expanding_window",
+    "folds": [
+      {
+        "training_games": 531,
+        "training_through": "2024-12-28",
+        "from_date": "2024-12-29",
+        "through_date": "2025-09-21",
+        "games": 86,
+        "score_mae": 7.707705212351811,
+        "scoreline_log_loss": 8.187664311679914,
+        "prior_selection": null
+      },
+      {
+        "training_games": 617,
+        "training_through": "2025-09-21",
+        "from_date": "2025-09-22",
+        "through_date": "2025-11-06",
+        "games": 89,
+        "score_mae": 7.635948234974149,
+        "scoreline_log_loss": 7.652082586763209,
+        "prior_selection": null
+      },
+      {
+        "training_games": 706,
+        "training_through": "2025-11-06",
+        "from_date": "2025-11-09",
+        "through_date": "2025-12-18",
+        "games": 89,
+        "score_mae": 7.450013140276881,
+        "scoreline_log_loss": 7.324360017611636,
+        "prior_selection": null
+      },
+      {
+        "training_games": 795,
+        "training_through": "2025-12-18",
+        "from_date": "2025-12-20",
+        "through_date": "2026-09-13",
+        "games": 70,
+        "score_mae": 8.265262249264286,
+        "scoreline_log_loss": 7.612348401316134,
+        "prior_selection": null
+      }
+    ],
+    "games": 334,
+    "decisive_games": 333,
+    "skipped_games": 0,
+    "from_date": "2024-12-29",
+    "through_date": "2026-09-13",
+    "training_through": "2024-12-28",
+    "training_games": 531,
+    "score_rmse": 9.762068944379507,
+    "winner_accuracy": 0.6186186186186187,
+    "home_baseline_accuracy": 0.5525525525525525,
+    "brier_score": 0.23367505302136996,
+    "baseline_brier_score": 0.24770199492623943,
+    "calibration_bins": [
+      {
+        "low": 0.0,
+        "high": 0.2,
+        "games": 0,
+        "predicted": null,
+        "observed": null
+      },
+      {
+        "low": 0.2,
+        "high": 0.4,
+        "games": 51,
+        "predicted": 0.34514535266304375,
+        "observed": 0.3333333333333333
+      },
+      {
+        "low": 0.4,
+        "high": 0.6,
+        "games": 206,
+        "predicted": 0.5008070153146831,
+        "observed": 0.558252427184466
+      },
+      {
+        "low": 0.6,
+        "high": 0.8,
+        "games": 76,
+        "predicted": 0.6650577735607601,
+        "observed": 0.6842105263157895
+      },
+      {
+        "low": 0.8,
+        "high": 1.0,
+        "games": 0,
+        "predicted": null,
+        "observed": null
+      }
+    ],
+    "calibration_games": 333
+  },
+  "after": {
+    "score_mae": 7.708263592875398,
+    "baseline_score_mae": 8.05245052767096,
+    "predicted_score_mae": 8.465568862275449,
+    "exact_score_accuracy": 0.0029940119760479044,
+    "rounded_score_accuracy": 0.0,
+    "scoreline_log_loss": 7.111466359330252,
+    "baseline_scoreline_log_loss": 7.210053732841336,
+    "margin_mae": 10.700373575951565,
+    "margin_interval_coverage": 0.8083832335329342,
+    "margin_interval_width": 36.77245508982036,
+    "outcome_brier_score": 0.4698247760588505,
+    "method": "expanding_window",
+    "folds": [
+      {
+        "training_games": 531,
+        "training_through": "2024-12-28",
+        "from_date": "2024-12-29",
+        "through_date": "2025-09-21",
+        "games": 86,
+        "score_mae": 7.609447748249969,
+        "scoreline_log_loss": 7.344357865962982,
+        "prior_selection": {
+          "games": 48,
+          "selected_prior_games": 512.0,
+          "candidates": [
+            {
+              "prior_games": 32.0,
+              "log_loss": 7.484464848083636
+            },
+            {
+              "prior_games": 128.0,
+              "log_loss": 7.136237019195106
+            },
+            {
+              "prior_games": 512.0,
+              "log_loss": 6.988702904839776
+            }
+          ],
+          "training_through": "2024-11-10",
+          "from_date": "2024-11-11",
+          "through_date": "2024-12-28"
+        }
+      },
+      {
+        "training_games": 617,
+        "training_through": "2025-09-21",
+        "from_date": "2025-09-22",
+        "through_date": "2025-11-06",
+        "games": 89,
+        "score_mae": 7.535682537826635,
+        "scoreline_log_loss": 7.067029945512165,
+        "prior_selection": {
+          "games": 48,
+          "selected_prior_games": 512.0,
+          "candidates": [
+            {
+              "prior_games": 32.0,
+              "log_loss": 8.144012638424597
+            },
+            {
+              "prior_games": 128.0,
+              "log_loss": 7.670790966711945
+            },
+            {
+              "prior_games": 512.0,
+              "log_loss": 7.3797680323754635
+            }
+          ],
+          "training_through": "2024-12-15",
+          "from_date": "2024-12-16",
+          "through_date": "2025-09-21"
+        }
+      },
+      {
+        "training_games": 706,
+        "training_through": "2025-11-06",
+        "from_date": "2025-11-09",
+        "through_date": "2025-12-18",
+        "games": 89,
+        "score_mae": 7.492872369483329,
+        "scoreline_log_loss": 6.946693233674002,
+        "prior_selection": {
+          "games": 48,
+          "selected_prior_games": 512.0,
+          "candidates": [
+            {
+              "prior_games": 32.0,
+              "log_loss": 8.211226439199864
+            },
+            {
+              "prior_games": 128.0,
+              "log_loss": 7.682945165780325
+            },
+            {
+              "prior_games": 512.0,
+              "log_loss": 7.342437458778316
+            }
+          ],
+          "training_through": "2025-01-18",
+          "from_date": "2025-01-19",
+          "through_date": "2025-11-06"
+        }
+      },
+      {
+        "training_games": 795,
+        "training_through": "2025-12-18",
+        "from_date": "2025-12-20",
+        "through_date": "2026-09-13",
+        "games": 70,
+        "score_mae": 8.322944956004267,
+        "scoreline_log_loss": 7.091337494227406,
+        "prior_selection": {
+          "games": 48,
+          "selected_prior_games": 512.0,
+          "candidates": [
+            {
+              "prior_games": 32.0,
+              "log_loss": 7.458174538273845
+            },
+            {
+              "prior_games": 128.0,
+              "log_loss": 7.1316115268403095
+            },
+            {
+              "prior_games": 512.0,
+              "log_loss": 6.947699698302093
+            }
+          ],
+          "training_through": "2025-09-28",
+          "from_date": "2025-09-29",
+          "through_date": "2025-12-18"
+        }
+      }
+    ],
+    "games": 334,
+    "decisive_games": 333,
+    "skipped_games": 0,
+    "from_date": "2024-12-29",
+    "through_date": "2026-09-13",
+    "training_through": "2024-12-28",
+    "training_games": 531,
+    "score_rmse": 9.712341786492226,
+    "winner_accuracy": 0.6066066066066066,
+    "home_baseline_accuracy": 0.5525525525525525,
+    "brier_score": 0.23306649755626244,
+    "baseline_brier_score": 0.24770199492623943,
+    "calibration_bins": [
+      {
+        "low": 0.0,
+        "high": 0.2,
+        "games": 0,
+        "predicted": null,
+        "observed": null
+      },
+      {
+        "low": 0.2,
+        "high": 0.4,
+        "games": 22,
+        "predicted": 0.360169574631793,
+        "observed": 0.36363636363636365
+      },
+      {
+        "low": 0.4,
+        "high": 0.6,
+        "games": 194,
+        "predicted": 0.5123782653640971,
+        "observed": 0.5103092783505154
+      },
+      {
+        "low": 0.6,
+        "high": 0.8,
+        "games": 117,
+        "predicted": 0.6639093109259345,
+        "observed": 0.6581196581196581
+      },
+      {
+        "low": 0.8,
+        "high": 1.0,
+        "games": 0,
+        "predicted": null,
+        "observed": null
+      }
+    ],
+    "calibration_games": 333
+  },
+  "production_prior_selection": {
+    "games": 48,
+    "selected_prior_games": 512.0,
+    "candidates": [
+      {
+        "prior_games": 32.0,
+        "log_loss": 7.9527539812265005
+      },
+      {
+        "prior_games": 128.0,
+        "log_loss": 7.544557725806129
+      },
+      {
+        "prior_games": 512.0,
+        "log_loss": 7.315498826493648
+      }
+    ],
+    "training_through": "2025-11-03",
+    "from_date": "2025-11-06",
+    "through_date": "2026-09-13"
+  },
+  "seconds": 44.4555401999969,
+  "snapshot_sha256": "fc1fef7fa8c5a754599a5c355ec72bfcca1a8ba6f931150b9aaf17237788f472",
+  "baseline_commit": "1a47bed",
+  "simulation": {
+    "synthetic": true,
+    "seeds": 48,
+    "seasons_per_seed": 8,
+    "simulated_games": 104832,
+    "forecasts_checked": 4608,
+    "scenarios": {
+      "balanced": 8,
+      "unequal": 8,
+      "drifting": 8,
+      "volatile": 8,
+      "low_scoring": 8,
+      "high_scoring": 8
+    },
+    "failures": [],
+    "seconds": 43700.973,
+    "interpretation": "Robustness checks on simulated data, not measured real-game accuracy."
+  }
+}

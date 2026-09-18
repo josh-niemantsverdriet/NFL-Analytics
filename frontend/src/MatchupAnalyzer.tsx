@@ -1,25 +1,7 @@
-import { useEffect, useState } from "react";
-
-interface TeamAnalytics {
-  season: number;
-  snapshot_date: string;
-  team: string;
-
-  plays: number;
-  epa_per_play: number | null;
-  pass_epa_per_play: number | null;
-  rush_epa_per_play: number | null;
-  success_rate: number | null;
-  explosive_play_rate: number | null;
-  pass_rate: number | null;
-
-  def_plays: number | null;
-  def_epa_per_play: number | null;
-  def_pass_epa_per_play: number | null;
-  def_rush_epa_per_play: number | null;
-  def_success_rate_allowed: number | null;
-  def_explosive_play_rate_allowed: number | null;
-}
+import { useEffect, useRef, useState } from "react";
+import { fetchData } from "./api";
+import { useTeamAnalytics } from "./teamAnalytics";
+import type { TeamAnalytics } from "./teamAnalytics";
 
 interface Projection {
   team: string;
@@ -125,18 +107,15 @@ function MetricRow({
 
 
 function MatchupAnalyzer() {
-  const [
-    availableTeams,
-    setAvailableTeams
-  ] = useState<TeamAnalytics[]>([]);
+  const { teams: availableTeams, loading: loadingTeams, error: teamError, retry } = useTeamAnalytics();
 
   const [
-    team1,
+    team1Selection,
     setTeam1
   ] = useState("");
 
   const [
-    team2,
+    team2Selection,
     setTeam2
   ] = useState("");
 
@@ -148,11 +127,6 @@ function MatchupAnalyzer() {
   );
 
   const [
-    loadingTeams,
-    setLoadingTeams
-  ] = useState(true);
-
-  const [
     loadingMatchup,
     setLoadingMatchup
   ] = useState(false);
@@ -162,67 +136,18 @@ function MatchupAnalyzer() {
     setError
   ] = useState<string | null>(null);
 
-  const apiBaseUrl =
-    import.meta.env.VITE_API_BASE_URL;
+  const team1 = team1Selection || availableTeams[0]?.team || "";
+  const team2 = team2Selection || availableTeams[1]?.team || "";
+  const request = useRef<AbortController | null>(null);
+  useEffect(() => () => request.current?.abort(), []);
 
-
-  useEffect(() => {
-    const loadTeams = async () => {
-      try {
-        setLoadingTeams(true);
-        setError(null);
-
-        const response = await fetch(
-          `${apiBaseUrl}/api/team-analytics`
-        );
-
-        if (!response.ok) {
-          throw new Error(
-            `Team API returned ${response.status}`
-          );
-        }
-
-        const data: TeamAnalytics[] =
-          await response.json();
-
-        const sortedTeams = [
-          ...data
-        ].sort(
-          (a, b) =>
-            a.team.localeCompare(
-              b.team
-            )
-        );
-
-        setAvailableTeams(
-          sortedTeams
-        );
-
-        if (
-          sortedTeams.length >= 2
-        ) {
-          setTeam1(
-            sortedTeams[0].team
-          );
-
-          setTeam2(
-            sortedTeams[1].team
-          );
-        }
-      } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Could not load teams."
-        );
-      } finally {
-        setLoadingTeams(false);
-      }
-    };
-
-    loadTeams();
-  }, [apiBaseUrl]);
-
+  function changeTeam(setTeam: (value: string) => void, value: string) {
+    request.current?.abort();
+    setLoadingMatchup(false);
+    setMatchup(null);
+    setError(null);
+    setTeam(value);
+  }
 
   const compareTeams = async () => {
     if (!team1 || !team2) {
@@ -239,43 +164,20 @@ function MatchupAnalyzer() {
       return;
     }
 
+    request.current?.abort();
+    const controller = new AbortController();
+    request.current = controller;
+    setLoadingMatchup(true);
+    setError(null);
+    setMatchup(null);
     try {
-      setLoadingMatchup(true);
-      setError(null);
-
-      const url =
-        `${apiBaseUrl}/api/matchup`
-        + `?team1=${encodeURIComponent(
-          team1
-        )}`
-        + `&team2=${encodeURIComponent(
-          team2
-        )}`;
-
-      const response = await fetch(
-        url
-      );
-
-      const data =
-        await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.error
-          ?? `Matchup API returned ${response.status}`
-        );
-      }
-
-      setMatchup(data);
-
+      const query = new URLSearchParams({ team1, team2 });
+      const data = await fetchData<MatchupResponse>(`/api/matchup?${query}`, controller.signal);
+      if (!controller.signal.aborted) setMatchup(data);
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to compare teams."
-      );
+      if (!controller.signal.aborted) setError(err instanceof Error ? err.message : "Failed to compare teams.");
     } finally {
-      setLoadingMatchup(false);
+      if (!controller.signal.aborted) setLoadingMatchup(false);
     }
   };
 
@@ -294,6 +196,7 @@ function MatchupAnalyzer() {
         </div>
       </div>
 
+      <p className="matchup-status">Compare season efficiency. Blended metrics describe the matchup; use Game Forecasts for score predictions.</p>
       <div className="matchup-card">
 
         {loadingTeams ? (
@@ -304,11 +207,10 @@ function MatchupAnalyzer() {
           <div className="matchup-controls">
 
             <select
+              aria-label="First team"
               value={team1}
               onChange={(event) =>
-                setTeam1(
-                  event.target.value
-                )
+                changeTeam(setTeam1, event.target.value)
               }
             >
               {availableTeams.map(
@@ -328,11 +230,10 @@ function MatchupAnalyzer() {
             </span>
 
             <select
+              aria-label="Second team"
               value={team2}
               onChange={(event) =>
-                setTeam2(
-                  event.target.value
-                )
+                changeTeam(setTeam2, event.target.value)
               }
             >
               {availableTeams.map(
@@ -350,7 +251,7 @@ function MatchupAnalyzer() {
             <button
               onClick={compareTeams}
               disabled={
-                loadingMatchup
+                loadingMatchup || !team1 || !team2 || team1 === team2
               }
             >
               {loadingMatchup
@@ -362,9 +263,10 @@ function MatchupAnalyzer() {
         )}
 
 
-        {error && (
-          <p className="matchup-error">
-            {error}
+        {(error || teamError) && (
+          <p className="matchup-error" role="alert">
+            {error || teamError}
+            {teamError && <button onClick={retry}>Retry team data</button>}
           </p>
         )}
 
@@ -428,7 +330,7 @@ function MatchupAnalyzer() {
 
 
             <MetricRow
-              label="Projected EPA / Play"
+              label="Blended EPA / Play"
               left={
                 matchup
                   .team1_projection
@@ -443,7 +345,7 @@ function MatchupAnalyzer() {
 
 
             <MetricRow
-              label="Projected Pass EPA"
+              label="Blended Pass EPA"
               left={
                 matchup
                   .team1_projection
@@ -458,7 +360,7 @@ function MatchupAnalyzer() {
 
 
             <MetricRow
-              label="Projected Rush EPA"
+              label="Blended Rush EPA"
               left={
                 matchup
                   .team1_projection
@@ -473,7 +375,7 @@ function MatchupAnalyzer() {
 
 
             <MetricRow
-              label="Projected Success Rate"
+              label="Blended Success Rate"
               left={
                 matchup
                   .team1_projection
@@ -489,7 +391,7 @@ function MatchupAnalyzer() {
 
 
             <MetricRow
-              label="Projected Explosive Rate"
+              label="Blended Explosive Rate"
               left={
                 matchup
                   .team1_projection

@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import azure.functions as func
 
 from src.analytics import calculate_team_analytics
+from src.matchup_metrics import blend_matchup_metrics
 from src.azure_storage import download_dataframe, upload_dataframe
 from src.database import get_connection
 from src.dashboard_loader import (
@@ -729,130 +730,8 @@ def matchup(
         team1_data = teams[team1]
         team2_data = teams[team2]
 
-        def average_metric(
-            first_value,
-            second_value
-        ):
-            if (
-                first_value is None
-                or second_value is None
-            ):
-                return None
-
-            return (
-                first_value
-                + second_value
-            ) / 2
-
-        team1_projection = {
-            "team": team1,
-            "opponent": team2,
-
-            "expected_epa_per_play":
-                average_metric(
-                    team1_data[
-                        "epa_per_play"
-                    ],
-                    team2_data[
-                        "def_epa_per_play"
-                    ]
-                ),
-
-            "expected_pass_epa_per_play":
-                average_metric(
-                    team1_data[
-                        "pass_epa_per_play"
-                    ],
-                    team2_data[
-                        "def_pass_epa_per_play"
-                    ]
-                ),
-
-            "expected_rush_epa_per_play":
-                average_metric(
-                    team1_data[
-                        "rush_epa_per_play"
-                    ],
-                    team2_data[
-                        "def_rush_epa_per_play"
-                    ]
-                ),
-
-            "expected_success_rate":
-                average_metric(
-                    team1_data[
-                        "success_rate"
-                    ],
-                    team2_data[
-                        "def_success_rate_allowed"
-                    ]
-                ),
-
-            "expected_explosive_rate":
-                average_metric(
-                    team1_data[
-                        "explosive_play_rate"
-                    ],
-                    team2_data[
-                        "def_explosive_play_rate_allowed"
-                    ]
-                )
-        }
-
-        team2_projection = {
-            "team": team2,
-            "opponent": team1,
-
-            "expected_epa_per_play":
-                average_metric(
-                    team2_data[
-                        "epa_per_play"
-                    ],
-                    team1_data[
-                        "def_epa_per_play"
-                    ]
-                ),
-
-            "expected_pass_epa_per_play":
-                average_metric(
-                    team2_data[
-                        "pass_epa_per_play"
-                    ],
-                    team1_data[
-                        "def_pass_epa_per_play"
-                    ]
-                ),
-
-            "expected_rush_epa_per_play":
-                average_metric(
-                    team2_data[
-                        "rush_epa_per_play"
-                    ],
-                    team1_data[
-                        "def_rush_epa_per_play"
-                    ]
-                ),
-
-            "expected_success_rate":
-                average_metric(
-                    team2_data[
-                        "success_rate"
-                    ],
-                    team1_data[
-                        "def_success_rate_allowed"
-                    ]
-                ),
-
-            "expected_explosive_rate":
-                average_metric(
-                    team2_data[
-                        "explosive_play_rate"
-                    ],
-                    team1_data[
-                        "def_explosive_play_rate_allowed"
-                    ]
-                )
-        }
+        team1_projection = blend_matchup_metrics(team1_data, team2_data)
+        team2_projection = blend_matchup_metrics(team2_data, team1_data)
 
         team1_expected = (
             team1_projection[
@@ -910,11 +789,11 @@ def matchup(
                 },
 
                 "method": (
-                    "Projected matchup metrics "
-                    "are a simple average of "
+                    "Descriptive matchup metrics "
+                    "are an untrained average of "
                     "the offense's metric and "
                     "the opposing defense's "
-                    "corresponding metric allowed."
+                    "corresponding metric allowed. These are not score forecasts or win probabilities."
                 )
             }),
             mimetype="application/json",

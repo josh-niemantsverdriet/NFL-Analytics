@@ -92,7 +92,7 @@ def rows_for_columns(
         for column in columns:
             value = row.get(column)
 
-            if isinstance(value, float) and math.isnan(value):
+            if isinstance(value, float) and not math.isfinite(value):
                 value = None
 
             values.append(value)

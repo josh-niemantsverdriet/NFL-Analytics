@@ -87,12 +87,11 @@ class ForecastModelTests(unittest.TestCase):
         evaluation = model.metadata["evaluation"]
         self.assertGreater(evaluation["games"], 0)
         self.assertLess(evaluation["training_through"], evaluation["from_date"])
-        self.assertEqual(len(captured_fits), 2)
-        self.assertTrue(all(
-            game["gameday"].isoformat() < evaluation["from_date"]
-            for game in captured_fits[0]
-        ))
-        self.assertEqual(len(captured_fits[1]), len(history))
+        self.assertEqual(len(captured_fits), len(evaluation["folds"]) + 1)
+        for fitted_games, fold in zip(captured_fits, evaluation["folds"]):
+            self.assertTrue(all(game["gameday"].isoformat() < fold["from_date"] for game in fitted_games))
+            self.assertEqual(len(fitted_games), fold["training_games"])
+        self.assertEqual(len(captured_fits[-1]), len(history))
 
     def test_changed_held_out_results_do_not_change_evaluation_model_or_sigma(self):
         from src import forecast_model
@@ -108,19 +107,21 @@ class ForecastModelTests(unittest.TestCase):
 
         with patch.object(forecast_model, "_fit", side_effect=capture):
             baseline = build_forecast_model(history)
-        cutoff = baseline.metadata["evaluation"]["from_date"]
+        # Modifying the last test block cannot affect any evaluation fit. Earlier
+        # test blocks may legitimately enter later expanding training windows.
+        cutoff = baseline.metadata["evaluation"]["folds"][-1]["from_date"]
         changed = copy.deepcopy(history)
         for game in changed:
             if game["gameday"] >= cutoff:
                 game["home_score"] += 35
         with patch.object(forecast_model, "_fit", side_effect=capture):
             updated = build_forecast_model(changed)
-        np.testing.assert_array_equal(
-            captured[0].score_distribution.base, captured[2].score_distribution.base,
-        )
+        fits_per_run = len(baseline.metadata["evaluation"]["folds"]) + 1
+        for index in range(fits_per_run - 1):
+            np.testing.assert_array_equal(captured[index].score_distribution.base, captured[index + fits_per_run].score_distribution.base)
+            np.testing.assert_array_equal(captured[index].regression.coef_, captured[index + fits_per_run].regression.coef_)
         before = baseline.metadata["evaluation"]
         after = updated.metadata["evaluation"]
-        self.assertEqual(before["margin_stddev"], after["margin_stddev"])
         self.assertEqual(before["training_through"], after["training_through"])
         self.assertNotEqual(before["margin_mae"], after["margin_mae"])
         self.assertNotEqual(before["scoreline_log_loss"], after["scoreline_log_loss"])
@@ -188,12 +189,14 @@ class ForecastModelTests(unittest.TestCase):
 
         history = game_history()
         # Half of the held-out games match the mode, half reverse its teams.
-        for index, game in enumerate(history[80:]):
-            game["home_score"], game["away_score"] = (27, 20) if index < 10 else (20, 27)
+        for index, game in enumerate(history[60:]):
+            game["home_score"], game["away_score"] = (27, 20) if index % 2 == 0 else (20, 27)
         cleaned, _, _ = _clean_games(history)
         fitted = Mock()
         fitted.team_indices = {team: index for index, team in enumerate(["BUF", "KC", "NYJ", "MIA"])}
-        fitted.trained_through = cleaned[79]["gameday"]
+        fitted.trained_through = cleaned[59]["gameday"]
+        fitted.game_counts = {team: 30 for team in fitted.team_indices}
+        fitted.prior_selection = None
         fitted.margin_stddev = 10.0
         fitted.scores.return_value = (24.5, 20.5)
         mass = np.zeros((31, 31))
@@ -205,10 +208,14 @@ class ForecastModelTests(unittest.TestCase):
         fitted.score_distribution.top_scorelines.return_value = [
             {"home_score": 27, "away_score": 20, "probability": 0.2},
         ]
+        fitted.score_distribution.summarize.return_value = {
+            "home_win_probability": 0.6, "away_win_probability": 0.39, "tie_probability": 0.01,
+            "margin_stddev": 10.0, "margin_interval": {"coverage": 0.8, "low": -10, "high": 15},
+        }
         with patch("src.forecast_model._fit", return_value=fitted):
             evaluation = _evaluate(cleaned)
 
-        self.assertEqual(evaluation["games"], 20)
+        self.assertEqual(evaluation["games"], 40)
         self.assertAlmostEqual(evaluation["score_mae"], 3.5)
         self.assertAlmostEqual(evaluation["score_rmse"], np.sqrt(17.25))
         self.assertAlmostEqual(evaluation["predicted_score_mae"], 3.5)

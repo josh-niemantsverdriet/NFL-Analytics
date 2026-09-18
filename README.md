@@ -1,133 +1,96 @@
-# NFL-Analytics
+# NFL Analytics
 
-NFL dashboards, team efficiency comparisons, and experimental forecasts built
-with React/TypeScript, Azure Functions, and nflverse data.
+React/TypeScript dashboards and an Azure Functions API using nflverse data.
 
-## Game forecasts
+- **Dashboard:** league rankings, descriptive offense-versus-defense comparisons,
+  player leaders, and recent results. Rankings and comparisons share one team-data request.
+- **Team pages:** offense, defense, rankings, leaders, and results.
+- **Game Forecasts (`/forecast`):** integer final-score predictions, alternatives,
+  expected points, win/loss/tie chances, and historical performance.
 
-Open **Game Forecasts** in the navigation (or `/forecast`). Choose one of the
-next 16 scheduled games, or select two teams and switch between home field and
-a neutral venue. The page shows a predicted integer final score, its estimated
-probability and two alternatives, expected average points, win chances, a
-margin range, and historical prediction results.
+## Forecast methodology
 
-Forecasts load schedules directly through `nflreadpy`; they do not require the
-dashboard's SQL tables or a completed analytics ingestion. The first request
-downloads schedule history and fits the model, so it can take longer. Network
-access to the public nflverse data release on GitHub is required.
+The `ridge-joint-score-v3` model fits recency-weighted offense and defense ratings,
+with a shared home-field advantage and regularized team deviations. A smoothed
+joint distribution of final scores is exponentially tilted to match expected
+points. Scorelines, win/loss/tie probabilities, and margin intervals all come
+from that distribution. Scheduled postseason games exclude ties.
 
-### How the score model works
+Smoothing is selected on an inner chronological validation sample. Four
+expanding-window test blocks evaluate the complete procedure using only earlier
+results; the production model then refits all eligible history. Forecasts use
+current-season and three preceding seasons of public schedule results, without
+requiring SQL or analytics ingestion. The cutoff advances at 8am Eastern and
+excludes games on or after that date; downloads and fitted models cache for up
+to an hour.
 
-- Uses the current season and three previous seasons of regular-season and
-  postseason scores. January and February belong to the preceding season.
-- Fits scoring and defensive effects for each team and team-specific home-field effects
-  with ridge regression. Recent games receive more weight (365-day half-life);
-  the regularization parameter is fixed at 20, not optimized against the test set.
-- Learns a distribution of whole-number final-score pairs from completed games.
-  Regularization smooths rare outcomes, and exponential tilting adjusts the
-  distribution to each matchup's expected points. The most probable pair is
-  the predicted final score; the next two pairs are alternatives. Scheduled
-  postseason games cannot have tied predicted scores.
-- Converts expected score margin to a win chance with a normal approximation.
-  Its spread comes from training-period margin residuals, with a seven-point
-  minimum standard deviation. These probabilities have not been calibrated.
-- Tests on the final 20% of distinct game dates using a model fit only on earlier
-  dates. Reports score MAE/RMSE, exact-score accuracy versus rounded averages,
-  scoreline log loss versus a league baseline, margin MAE, winner accuracy,
-  a home-team baseline, Brier score, and observed coverage of the nominal 80%
-  interval. All score-distribution components use only the earlier training
-  results. It then refits on all
-  available completed history for future forecasts.
-- Excludes the cutoff date and later results from training. The cutoff advances
-  at 8am America/New_York, giving late games time to finish. Scheduled games
-  whose kickoff has passed or which already have either score are excluded
-  from the upcoming list.
+See [the algorithm and API semantics](docs/score-forecast.md),
+[research and measured tradeoffs](docs/application-research.md), and
+[recorded validation results](docs/validation-results.json).
 
-The integer prediction is one possible final score, often with a small
-probability; the decimal scores remain expected averages. Exact-score
-probabilities are uncalibrated. Win chances use a separate normal-margin
-approximation without a separate tie outcome; winner accuracy and Brier score
-exclude actual ties.
-Injuries, quarterback changes, weather, rest, and offseason roster changes are
-not modeled. The displayed 80% margin range is nominal and may cover fewer than
-80% of real outcomes.
+## Run locally
 
-See [the algorithm, assumptions, and reproducible backtest](docs/score-forecast.md).
-This is a custom combination of established statistical techniques, not a claim
-of industry-leading accuracy.
-
-References: [nflverse schedule data](https://nflreadr.nflverse.com/articles/dictionary_schedules.html),
-[ridge regression](https://sklearn.org/stable/modules/generated/sklearn.linear_model.Ridge.html),
-[exponential tilting](https://web.mit.edu/~r/current/lib/R/library/boot/html/exp.tilt.html),
-and [chronological evaluation](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html).
-
-### Run locally
-
-Install Python dependencies and start the Azure Functions host with Python 3.11+
-and Azure Functions Core Tools available:
+Python 3.11+, Azure Functions Core Tools, and Node 22 are required.
 
 ```powershell
 python -m pip install -r requirements.txt
 func start --cors http://localhost:5173
 ```
 
-The Functions host needs a local `local.settings.json` with
-`FUNCTIONS_WORKER_RUNTIME` set to `python` (and the hosting configuration required
-by your local Functions setup). Dashboard endpoints additionally use
+The Functions host needs its local hosting settings and
+`FUNCTIONS_WORKER_RUNTIME=python`. Dashboard endpoints use
 `NFL_SQL_CONNECTION_STRING`; ingestion uses `NFL_STORAGE_ACCOUNT_NAME` and Azure
-credentials. Forecast endpoints only need public data access.
+credentials. Keep credentials in local/Azure settings, outside version control.
+Forecast endpoints need access to public nflverse GitHub data releases.
 
-Downloaded schedules and fitted models are cached in process for up to one hour.
-The forecast service caps nflreadpy's shared download cache at one hour,
-preserving shorter `NFLREADPY_CACHE_DURATION` settings. Fitted models are also
-invalidated when the daily training cutoff changes. The page displays
-the latest training game date, not a claim of live game coverage.
-
-In `frontend/.env.local`:
-
-```dotenv
-VITE_API_BASE_URL=http://localhost:7071
-```
-
-Then:
+Set `VITE_API_BASE_URL=http://localhost:7071` in `frontend/.env.local`, then:
 
 ```powershell
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
-Visit `http://localhost:5173/forecast`. Use an empty API base only when your
-hosting setup routes `/api` requests to the Functions app. Production static
-hosting also needs an SPA fallback to `index.html` for direct `/forecast` visits.
+An empty API base uses same-origin `/api` routing. Production uses the tracked
+`frontend/.env.production`; SPA fallback is configured in
+`frontend/public/staticwebapp.config.json`.
 
-### Forecast API
-
-- `GET /api/forecasts`: upcoming fixtures with predictions, available teams,
-  training cutoff, and model evaluation.
-- `GET /api/forecast?home_team=BUF&away_team=MIA&neutral=false`: hypothetical
-  matchup using the same model. Both teams must have completed game history.
-
-The normal margin is always **home score minus away score**, including neutral
-fixtures where home/away are only schedule labels. Score/probability values are
-returned at full precision and formatted by the frontend.
-
-`home_score` / `away_score` remain expected means for API compatibility.
-`score_prediction` contains integer `home_score`, integer `away_score`, and
-`probability`; `top_scorelines` contains up to three such objects, including
-the primary prediction. `allow_ties` is false for scheduled postseason games;
-hypothetical matchups use regular-season semantics.
-
-### Checks
+## Validate
 
 ```powershell
 python -m unittest discover -s tests -v
+python -m src.forecast_simulation --seeds 48 --seasons 8 --matchups 96
+python -m src.forecast_backtest --schedules data/forecast/schedules.parquet --before 2026-09-17
 cd frontend
-npm run build
+npm test
 npm run lint
+npm run build
 ```
 
-The forecast tests use deterministic fixtures and mocked schedule downloads;
-they cover chronological isolation, duplicates, missing history, venue symmetry,
-probability normalization and mean matching, integer score selection, postseason
-tie exclusion, upcoming filtering, cache invalidation, and API validation.
+The extensive stress command generates **104,832 games** across 48 seeded runs
+and checks **4,608 forecasts**. Unit tests additionally cover 6,552 simulated
+games, 64,000 play-by-play rows, 2,000 corrupt/duplicate rows, and 3,200 frontend
+ranking cases. Simulations test robustness, not real-game accuracy. The optional
+backtest command needs a downloaded nflverse schedule parquet; data files are
+not committed.
+
+## Deployment
+
+Pushing `main` deploys the frontend after the reusable Python/frontend quality
+checks succeed. The Function App is deployed separately from the repository root:
+
+```powershell
+func azure functionapp publish <FUNCTION_APP_NAME> --python --build remote
+```
+
+After deploying these analytics changes, run the existing authenticated
+`POST /api/analyze` operation for the desired snapshot to recompute stored team
+metrics. No schema migration is needed. Existing SQL snapshots do not change
+until analysis/ingestion runs again.
+
+Send JSON with `season` and `snapshot_date` for an existing ingested snapshot,
+and supply the Function key in the `x-functions-key` header.
+
+Deploy both frontend and backend for the new tie probabilities. The backend API
+version identifies the new semantics; see the forecast documentation before
+updating other consumers.

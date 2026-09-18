@@ -273,3 +273,8 @@
   .forecast-loading-dot { animation: none; }
   .forecast-game-choice { transition: none; }
 }
+
+.forecast-probability-tie { background: #aeb9c8; }
+.forecast-probability-caption small { display: block; margin-top: .2rem; font-size: .7rem; }
+.forecast-calibration { width: 100%; max-width: 32rem; border-collapse: collapse; }
+.forecast-calibration th, .forecast-calibration td { text-align: left; padding: .55rem .7rem; border-bottom: 1px solid #344152; }

@@ -1,162 +1,65 @@
+"""Team efficiency on regular-season offensive plays, using nflfastR definitions."""
+
 import polars as pl
 
 
-def calculate_team_analytics(
-    play_by_play: pl.DataFrame,
-    season: int,
-    snapshot_date: str
-) -> pl.DataFrame:
-    offensive_plays = play_by_play.filter(
-        pl.col("posteam").is_not_null()
-        & pl.col("defteam").is_not_null()
-        & pl.col("epa").is_not_null()
-        & (
-            (pl.col("pass_attempt") == 1)
-            | (pl.col("rush_attempt") == 1)
-        )
+def calculate_team_analytics(play_by_play: pl.DataFrame, season: int, snapshot_date: str) -> pl.DataFrame:
+    columns = set(play_by_play.columns)
+
+    def flag(name):
+        return pl.col(name).fill_null(0) == 1 if name in columns else pl.lit(False)
+
+    # nflfastR pass/rush classify sacks and scrambles as dropbacks. Fall back
+    # to component flags for older snapshots without these derived columns.
+    passing = flag("pass") if "pass" in columns else (
+        flag("qb_dropback") | flag("pass_attempt") | flag("sack") | flag("qb_scramble")
     )
-
-    # -------------------------
-    # Offensive analytics
-    # -------------------------
-
-    offense = (
-        offensive_plays
-        .group_by("posteam")
-        .agg(
-            pl.len().alias("plays"),
-
-            pl.col("epa")
-            .mean()
-            .alias("epa_per_play"),
-
-            pl.when(
-                pl.col("pass_attempt") == 1
-            )
-            .then(pl.col("epa"))
-            .otherwise(None)
-            .mean()
-            .alias("pass_epa_per_play"),
-
-            pl.when(
-                pl.col("rush_attempt") == 1
-            )
-            .then(pl.col("epa"))
-            .otherwise(None)
-            .mean()
-            .alias("rush_epa_per_play"),
-
-            pl.col("success")
-            .mean()
-            .alias("success_rate"),
-
-            (
-                pl.col("yards_gained") >= 20
-            )
-            .cast(pl.Float64)
-            .mean()
-            .alias("explosive_play_rate"),
-
-            pl.col("pass_attempt")
-            .mean()
-            .alias("pass_rate")
-        )
-        .rename({
-            "posteam": "team"
-        })
+    rushing = (flag("rush") if "rush" in columns else flag("rush_attempt")) & ~passing
+    valid = (
+        pl.col("posteam").is_not_null() & (pl.col("posteam") != "")
+        & pl.col("defteam").is_not_null() & (pl.col("defteam") != "")
+        & (pl.col("posteam") != pl.col("defteam"))
+        & pl.col("epa").is_finite()
+        & (passing | rushing)
+        & ~flag("qb_kneel") & ~flag("qb_spike")
     )
+    if "season" in columns:
+        valid &= pl.col("season") == season
+    if "season_type" in columns:
+        valid &= pl.col("season_type") == "REG"
+    plays = play_by_play.filter(valid).with_columns(passing.alias("_pass"), rushing.alias("_rush"))
 
-    # -------------------------
-    # Defensive analytics
-    # -------------------------
-
-    defense = (
-        offensive_plays
-        .group_by("defteam")
-        .agg(
-            pl.len().alias("def_plays"),
-
-            pl.col("epa")
-            .mean()
-            .alias("def_epa_per_play"),
-
-            pl.when(
-                pl.col("pass_attempt") == 1
-            )
-            .then(pl.col("epa"))
-            .otherwise(None)
-            .mean()
-            .alias("def_pass_epa_per_play"),
-
-            pl.when(
-                pl.col("rush_attempt") == 1
-            )
-            .then(pl.col("epa"))
-            .otherwise(None)
-            .mean()
-            .alias("def_rush_epa_per_play"),
-
-            pl.col("success")
-            .mean()
-            .alias("def_success_rate_allowed"),
-
-            (
-                pl.col("yards_gained") >= 20
-            )
-            .cast(pl.Float64)
-            .mean()
-            .alias(
-                "def_explosive_play_rate_allowed"
-            )
+    def aggregate(team_column, defensive=False):
+        names = (
+            ["def_plays", "def_epa_per_play", "def_pass_epa_per_play", "def_rush_epa_per_play",
+             "def_success_rate_allowed", "def_explosive_play_rate_allowed"]
+            if defensive else
+            ["plays", "epa_per_play", "pass_epa_per_play", "rush_epa_per_play", "success_rate", "explosive_play_rate"]
         )
-        .rename({
-            "defteam": "team"
-        })
-    )
+        expressions = [
+            pl.len(), pl.col("epa").mean(),
+            pl.col("epa").filter(pl.col("_pass")).mean(),
+            pl.col("epa").filter(pl.col("_rush")).mean(),
+            (pl.col("epa") > 0).mean(),
+            (pl.col("yards_gained") >= 20).mean(),
+        ]
+        metrics = [expression.alias(name) for expression, name in zip(expressions, names)]
+        if not defensive:
+            metrics.append(pl.col("_pass").mean().alias("pass_rate"))
+        return plays.group_by(team_column).agg(metrics).rename({team_column: "team"})
 
-    # Every offensive play has both an offense
-    # and a defense, so the two sets should align.
-    team_analytics = (
-        offense
-        .join(
-            defense,
-            on="team",
-            how="inner"
-        )
+    return (
+        aggregate("posteam").join(aggregate("defteam", True), on="team", how="full", coalesce=True)
         .with_columns(
-            pl.lit(season)
-            .alias("season"),
-
-            pl.lit(snapshot_date)
-            .str.to_date("%Y-%m-%d")
-            .alias("snapshot_date")
+            pl.lit(season).alias("season"),
+            pl.lit(snapshot_date).str.to_date("%Y-%m-%d").alias("snapshot_date"),
+            pl.col("plays").fill_null(0), pl.col("def_plays").fill_null(0),
         )
         .select(
-            "season",
-            "snapshot_date",
-            "team",
-
-            # Offense
-            "plays",
-            "epa_per_play",
-            "pass_epa_per_play",
-            "rush_epa_per_play",
-            "success_rate",
-            "explosive_play_rate",
-            "pass_rate",
-
-            # Defense
-            "def_plays",
-            "def_epa_per_play",
-            "def_pass_epa_per_play",
-            "def_rush_epa_per_play",
-            "def_success_rate_allowed",
-            "def_explosive_play_rate_allowed"
+            "season", "snapshot_date", "team", "plays", "epa_per_play", "pass_epa_per_play",
+            "rush_epa_per_play", "success_rate", "explosive_play_rate", "pass_rate",
+            "def_plays", "def_epa_per_play", "def_pass_epa_per_play", "def_rush_epa_per_play",
+            "def_success_rate_allowed", "def_explosive_play_rate_allowed",
         )
-        .sort(
-            "epa_per_play",
-            descending=True
-        )
+        .sort("epa_per_play", descending=True, nulls_last=True)
     )
-
-    return team_analytics

@@ -164,6 +164,32 @@ class ScoreDistributionTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     self.distribution.probabilities(home, away)
 
+    def test_malformed_training_arrays_are_rejected_before_allocation(self):
+        for scores, weights in [
+            ([], []), ([20, 10], [1]), ([[20, 10]], []), ([[20, 10]], [0]),
+            ([[20, 10]], [-1]), ([[20, 10]], [float("nan")]),
+            ([[20.5, 10]], [1]), ([[float("inf"), 10]], [1]), ([[100000, 10]], [1]),
+        ]:
+            with self.subTest(scores=scores, weights=weights):
+                with self.assertRaises(ValueError):
+                    ScoreDistribution.fit(scores, weights)
+
+    def test_joint_summary_includes_ties_and_correct_margin_quantiles(self):
+        mass = np.zeros((31, 31))
+        mass[27, 20], mass[20, 27], mass[20, 20] = 0.6, 0.3, 0.1
+        summary = ScoreDistribution.summarize(mass)
+        self.assertAlmostEqual(summary["home_win_probability"], 0.6)
+        self.assertAlmostEqual(summary["away_win_probability"], 0.3)
+        self.assertAlmostEqual(summary["tie_probability"], 0.1)
+        self.assertEqual(summary["margin_interval"], {"coverage": 0.8, "low": -7, "high": 7})
+        reverse = ScoreDistribution.summarize(mass.T)
+        self.assertEqual(reverse["home_win_probability"], summary["away_win_probability"])
+
+    def test_zero_weight_results_cannot_expand_score_support(self):
+        clean = ScoreDistribution.fit([[20, 17]], [1])
+        dirty = ScoreDistribution.fit([[20, 17], [200, 200]], [1, 0])
+        np.testing.assert_array_equal(clean.base, dirty.base)
+
 
 if __name__ == "__main__":
     unittest.main()

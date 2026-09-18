@@ -1,3 +1,4 @@
+import { fetchData } from "./api";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 
@@ -163,11 +164,10 @@ function TeamPage() {
     setError
   ] = useState<string | null>(null);
 
-  const apiBaseUrl =
-    import.meta.env.VITE_API_BASE_URL;
 
 
   useEffect(() => {
+    const controller = new AbortController();
     const loadTeam = async () => {
       if (!teamCode) {
         setError("Missing team code.");
@@ -179,45 +179,30 @@ function TeamPage() {
         setLoading(true);
         setError(null);
 
-        const response = await fetch(
-          `${apiBaseUrl}/api/team/${encodeURIComponent(
-            teamCode.toUpperCase()
-          )}`
-        );
-
-        const body = await response.json();
-
-        if (!response.ok) {
-          throw new Error(
-            body.error
-            ?? `Team API returned ${response.status}`
-          );
-        }
-
+        const body = await fetchData<TeamData>(`/api/team/${encodeURIComponent(teamCode.toUpperCase())}`, controller.signal);
+        if (controller.signal.aborted) return;
         setData(body);
 
       } catch (err) {
+        if (controller.signal.aborted) return;
         setError(
           err instanceof Error
             ? err.message
             : "Failed to load team."
         );
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     };
 
-    loadTeam();
-
-  }, [
-    teamCode,
-    apiBaseUrl
-  ]);
+    void loadTeam();
+    return () => controller.abort();
+  }, [teamCode]);
 
 
   if (loading) {
     return (
-      <main className="page centered">
+      <main id="main-content" className="page centered">
         <p>
           Loading team...
         </p>
@@ -228,7 +213,7 @@ function TeamPage() {
 
   if (error || !data) {
     return (
-      <main className="page centered">
+      <main id="main-content" className="page centered">
 
         <h1>
           Team not found
@@ -257,7 +242,7 @@ function TeamPage() {
 
 
   return (
-    <main className="page">
+    <main id="main-content" className="page">
 
       <Link
         to="/"

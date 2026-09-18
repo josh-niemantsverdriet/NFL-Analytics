@@ -149,7 +149,7 @@ function Scoreboard({ result, game }: { result: ForecastResponse; game?: Upcomin
           <span className="forecast-team-sample">{forecast.away_current_season_games != null && `${forecast.away_current_season_games} this season · `}{forecast.away_games} total games</span>
         </div>
         <div className="forecast-score-divider" aria-hidden="true">
-          <span>{scorePrediction ? "PREDICTED" : "EXPECTED"}</span>
+          <span>{presentation.scoreKind}</span>
           <strong>:</strong>
           <span>POINTS</span>
         </div>
@@ -163,7 +163,7 @@ function Scoreboard({ result, game }: { result: ForecastResponse; game?: Upcomin
       </div>
 
       {scorePrediction && <div className="forecast-scorelines">
-        <p>Model probability of this exact score: <strong>{percent(scorePrediction.probability, 2)}</strong></p>
+        <p>{presentation.exactProbabilityLabel}: <strong>{percent(scorePrediction.probability, 2)}</strong></p>
         {alternatives.length > 0 && <>
           <span className="forecast-scorelines-label">{presentation.alternativesHeading}</span>
           <ul>

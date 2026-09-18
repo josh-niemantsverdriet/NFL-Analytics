@@ -95,7 +95,7 @@ def evaluate(games, fit, forecast):
             "games": len(fold_records),
             "score_mae": _mean([row["score_mae"] for row in fold_records]),
             "scoreline_log_loss": _mean([row["scoreline_log_loss"] for row in fold_records]),
-            "prior_selection": model.prior_selection,
+            "distribution_selection": model.distribution_selection,
         })
 
     metric_names = (

@@ -232,7 +232,7 @@ class ForecastModelTests(unittest.TestCase):
         fitted.trained_through = cleaned[59]["gameday"]
         fitted.game_counts = {team: 30 for team in fitted.team_indices}
         fitted.current_season_counts = {team: 1 for team in fitted.team_indices}
-        fitted.prior_selection = None
+        fitted.distribution_selection = None
         fitted.margin_stddev = 10.0
         fitted.scores.return_value = (24.5, 20.5)
         mass = np.zeros((31, 31))

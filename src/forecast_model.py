@@ -18,7 +18,8 @@ from sklearn.linear_model import Ridge
 from src.forecast_evaluation import evaluate, INITIAL_TRAINING_FRACTION, EVALUATION_FOLDS
 
 from src.score_distribution import (
-    JOINT_PRIOR_GAMES, MARGINAL_PRIOR_SCORES, MAXIMUM_OBSERVED_SCORE, ScoreDistribution,
+    MARGINAL_PRIOR_SCORES, MAXIMUM_OBSERVED_SCORE, PAIR_DEPENDENCE,
+    PAIR_DEPENDENCE_CANDIDATES, ScoreDistribution,
 )
 
 RIDGE_ALPHA = 20.0
@@ -27,9 +28,8 @@ RECENCY_CANDIDATES = (120.0, 180.0, 270.0)
 MINIMUM_GAMES = 12
 INTERVAL_COVERAGE = 0.8
 POSTSEASON_GAME_TYPES = {"WC", "DIV", "CON", "SB"}
-JOINT_PRIOR_CANDIDATES = (32.0, 128.0, 512.0)
-MINIMUM_PRIOR_SELECTION_GAMES = 200
-MAXIMUM_PRIOR_VALIDATION_GAMES = 48
+MINIMUM_DISTRIBUTION_SELECTION_GAMES = 200
+MAXIMUM_DISTRIBUTION_VALIDATION_GAMES = 48
 
 TEAM_ALIASES = {
     "LAR": "LA",
@@ -153,7 +153,7 @@ class _FittedScores:
     game_counts: Counter
     trained_through: date
     score_distribution: ScoreDistribution | None = None
-    prior_selection: dict | None = None
+    distribution_selection: dict | None = None
     recency_half_life_days: float = RECENCY_HALF_LIFE_DAYS
     season_weights: list | None = None
     current_season_counts: Counter | None = None
@@ -196,7 +196,7 @@ def _recency_weights(games, half_life_days):
     ], dtype=float)
 
 
-def _fit_base(games, prior_games=JOINT_PRIOR_GAMES, half_life_days=RECENCY_HALF_LIFE_DAYS):
+def _fit_base(games, pair_dependence=PAIR_DEPENDENCE, half_life_days=RECENCY_HALF_LIFE_DAYS):
     teams = sorted({
         game[side] for game in games for side in ("home_team", "away_team")
     })
@@ -233,15 +233,15 @@ def _fit_base(games, prior_games=JOINT_PRIOR_GAMES, half_life_days=RECENCY_HALF_
         for season in sorted({game["season"] for game in games}, reverse=True)
     ]
     actual = scores.reshape(-1, 2)
-    fitted.score_distribution = ScoreDistribution.fit(actual, game_weights, prior_games=prior_games)
+    fitted.score_distribution = ScoreDistribution.fit(actual, game_weights, pair_dependence=pair_dependence)
     return fitted
 
 
 def _fit(games):
-    """Choose recency and smoothing on inner dates, then refit training data."""
-    selection = {"games": 0, "selected_prior_games": JOINT_PRIOR_GAMES, "candidates": [],
+    """Choose recency and score-pair dependence on inner dates, then refit."""
+    selection = {"games": 0, "selected_pair_dependence": PAIR_DEPENDENCE, "candidates": [],
                  "selected_half_life_days": RECENCY_HALF_LIFE_DAYS, "recency_candidates": []}
-    if len(games) >= MINIMUM_PRIOR_SELECTION_GAMES:
+    if len(games) >= MINIMUM_DISTRIBUTION_SELECTION_GAMES:
         dates = sorted({game["gameday"] for game in games})
         split = dates[min(len(dates) - 1, int(len(dates) * 0.8))]
         earlier = [g for g in games if g["gameday"] < split]
@@ -258,31 +258,31 @@ def _fit(games):
                 recency_fits[half_life] = candidate
             if recency_fits:
                 selection["selected_half_life_days"] = min(selection["recency_candidates"], key=lambda row: row["score_mse"])["half_life_days"]
-            if len(validation) > MAXIMUM_PRIOR_VALIDATION_GAMES:
-                validation = [validation[i] for i in np.linspace(0, len(validation) - 1, MAXIMUM_PRIOR_VALIDATION_GAMES, dtype=int)]
+            if len(validation) > MAXIMUM_DISTRIBUTION_VALIDATION_GAMES:
+                validation = [validation[i] for i in np.linspace(0, len(validation) - 1, MAXIMUM_DISTRIBUTION_VALIDATION_GAMES, dtype=int)]
             inner = recency_fits.get(selection["selected_half_life_days"]) or _fit_base(earlier)
             validation = [g for g in validation if g["home_team"] in inner.team_indices and g["away_team"] in inner.team_indices]
             targets = [inner.scores(g["home_team"], g["away_team"], g["neutral"]) for g in validation]
             weights = _recency_weights(earlier, selection["selected_half_life_days"])
             actual = np.array([[g["home_score"], g["away_score"]] for g in earlier])
             if len(validation) >= 20:
-                for prior in JOINT_PRIOR_CANDIDATES:
-                    distribution = ScoreDistribution.fit(actual, weights, prior_games=prior)
+                for pair_dependence in PAIR_DEPENDENCE_CANDIDATES:
+                    distribution = ScoreDistribution.fit(actual, weights, pair_dependence=pair_dependence)
                     losses = []
                     for game, means in zip(validation, targets):
                         mass = distribution.probabilities(*means, allow_ties=game["allow_ties"])
                         home, away = int(game["home_score"]), int(game["away_score"])
                         probability = mass[home, away] if max(home, away) < len(mass) else 0.0
                         losses.append(-np.log(max(float(probability), 1e-15)))
-                    selection["candidates"].append({"prior_games": prior, "log_loss": float(np.mean(losses))})
+                    selection["candidates"].append({"pair_dependence": pair_dependence, "log_loss": float(np.mean(losses))})
                 selection.update({
                     "games": len(validation), "training_through": inner.trained_through.isoformat(),
                     "from_date": validation[0]["gameday"].isoformat(),
                     "through_date": validation[-1]["gameday"].isoformat(),
-                    "selected_prior_games": min(selection["candidates"], key=lambda row: row["log_loss"])["prior_games"],
+                    "selected_pair_dependence": min(selection["candidates"], key=lambda row: row["log_loss"])["pair_dependence"],
                 })
-    fitted = _fit_base(games, prior_games=selection["selected_prior_games"], half_life_days=selection["selected_half_life_days"])
-    fitted.prior_selection = selection
+    fitted = _fit_base(games, pair_dependence=selection["selected_pair_dependence"], half_life_days=selection["selected_half_life_days"])
+    fitted.distribution_selection = selection
     return fitted
 
 
@@ -358,7 +358,7 @@ def build_forecast_model(games: list[dict]) -> ForecastModel:
     fitted = _fit(cleaned)
     metadata = {
         "name": "Experimental final-score forecast",
-        "version": "ridge-joint-score-v4",
+        "version": "ridge-smooth-score-v5",
         "method": (
             "Ridge regression fits team scoring, opponent points allowed, and "
             "a shared home-field advantage with regularized team deviations. Recent games receive "
@@ -387,20 +387,19 @@ def build_forecast_model(games: list[dict]) -> ForecastModel:
             "regression_weight_normalization": "mean_one",
             "history_weight_by_season": fitted.season_weights,
             "point_forecast_method": "minimum_expected_absolute_error",
-            "joint_prior_games": fitted.score_distribution.prior_games,
-            "joint_prior_candidates": list(JOINT_PRIOR_CANDIDATES),
-            "prior_selection": fitted.prior_selection,
+            "pair_dependence": fitted.score_distribution.pair_dependence,
+            "pair_dependence_candidates": list(PAIR_DEPENDENCE_CANDIDATES),
+            "distribution_selection": fitted.distribution_selection,
             "marginal_prior_scores": MARGINAL_PRIOR_SCORES,
             "score_support_maximum": len(fitted.score_distribution.base) - 1,
             "scoreline_method": (
-                "Recency-weighted joint final-score frequencies, pooled across "
-                "home/away orientations and shrunk toward smoothed independent "
-                "marginals. Minimum-relative-entropy exponential tilting matches "
-                "the two ridge score means. Postseason scorelines exclude ties. "
+                "Recency-weighted marginal final-score frequencies with a small "
+                "validated empirical-pair dependence blend. Minimum-relative-entropy "
+                "exponential tilting matches the two ridge score means. Postseason scorelines exclude ties. "
                 "The central integer projection minimizes expected absolute point error on supported score pairs."
             ),
             "scoreline_log_loss_baseline": (
-                "The same training-only league score distribution without "
+                "The same training-only smooth league score distribution without "
                 "matchup adjustments; natural logs, probabilities floored at 1e-15."
             ),
             "evaluation_fraction_of_dates": 1 - INITIAL_TRAINING_FRACTION,

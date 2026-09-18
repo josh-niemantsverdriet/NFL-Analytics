@@ -1,8 +1,8 @@
-"""Discrete final scores from a regularized empirical joint distribution.
+"""Smooth score distributions with a limited empirical-pair dependence blend.
 
-Exponential tilting (minimum relative entropy) adjusts historical scoreline
-frequencies to match a matchup's expected points. This preserves football's
-uneven score frequencies without inferring touchdowns from final scores.
+Each team's marginal score shape is learned separately, then tilted to match
+the matchup means. A small empirical-pair blend retains limited dependence
+without letting a few historical exact pairs determine every forecast.
 """
 
 from dataclasses import dataclass
@@ -12,8 +12,11 @@ from scipy.optimize import minimize
 from scipy.special import logsumexp
 
 
-JOINT_PRIOR_GAMES = 32.0
 MARGINAL_PRIOR_SCORES = 2.0
+PAIR_DEPENDENCE = 0.1
+# A larger pair blend lets a small number of repeated historical finals become
+# a generic forecast. Keep dependence available, but cap its influence.
+PAIR_DEPENDENCE_CANDIDATES = (0.0, 0.05, 0.1)
 MINIMUM_SCORE_SUPPORT = 100
 MAXIMUM_OBSERVED_SCORE = 200  # Resource bound for malformed data, not a football rule.
 MINIMUM_PRIOR_STDDEV = 7.0
@@ -22,15 +25,15 @@ MINIMUM_PRIOR_STDDEV = 7.0
 @dataclass
 class ScoreDistribution:
     base: np.ndarray
-    prior_games: float = JOINT_PRIOR_GAMES
+    pair_dependence: float = PAIR_DEPENDENCE
 
     @classmethod
-    def fit(cls, scores, weights, prior_games=JOINT_PRIOR_GAMES):
+    def fit(cls, scores, weights, pair_dependence=PAIR_DEPENDENCE):
         """Fit using only completed training games, with one weight per game."""
         scores = np.asarray(scores, dtype=float)
         weights = np.asarray(weights, dtype=float)
-        if not np.isfinite(prior_games) or prior_games <= 0:
-            raise ValueError("The joint prior must have positive finite weight.")
+        if not np.isfinite(pair_dependence) or not 0 <= pair_dependence <= 1:
+            raise ValueError("Pair dependence must be a finite value from zero to one.")
         if scores.ndim != 2 or scores.shape[1] != 2 or not len(scores):
             raise ValueError("Training scores must be a nonempty array of score pairs.")
         if (weights.shape != (len(scores),) or not np.all(np.isfinite(weights))
@@ -63,11 +66,13 @@ class ScoreDistribution:
         observed = np.zeros((len(grid), len(grid)), dtype=float)
         np.add.at(observed, (scores[:, 0], scores[:, 1]), weights / 2.0)
         np.add.at(observed, (scores[:, 1], scores[:, 0]), weights / 2.0)
-        # Pool both orientations: venue belongs in the expected-score model,
-        # rather than being counted again in this league-wide score prior.
-        base = observed + prior_games * np.outer(marginal, marginal)
-        base /= base.sum()
-        return cls(base=base, prior_games=float(prior_games))
+        observed /= observed.sum()
+        independent = np.outer(marginal, marginal)
+        # Venue belongs in expected points. The pair blend carries only broad
+        # league-level dependence, so one frequent score pair cannot become a
+        # universal mode for otherwise different matchups.
+        base = pair_dependence * observed + (1 - pair_dependence) * independent
+        return cls(base=base / base.sum(), pair_dependence=float(pair_dependence))
 
     def baseline(self, allow_ties=True):
         if allow_ties:

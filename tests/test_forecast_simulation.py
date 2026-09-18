@@ -85,12 +85,13 @@ class ForecastSimulationTests(unittest.TestCase):
         self.assertEqual(sum(bin_["games"] for bin_ in evaluation["calibration_bins"]), evaluation["decisive_games"])
         for fold in evaluation["folds"]:
             self.assertLess(fold["training_through"], fold["from_date"])
-            selection = fold["prior_selection"]
+            selection = fold["distribution_selection"]
             self.assertGreaterEqual(selection["games"], 20)
             self.assertLess(selection["training_through"], selection["from_date"])
             self.assertLess(selection["through_date"], fold["from_date"])
             self.assertIn(selection["selected_half_life_days"], (120, 180, 270))
             self.assertEqual(len(selection["recency_candidates"]), 3)
+            self.assertIn(selection["selected_pair_dependence"], (0, 0.05, 0.1))
         json.dumps(model.metadata, allow_nan=False)
 
 

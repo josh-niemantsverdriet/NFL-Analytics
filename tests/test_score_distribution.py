@@ -60,20 +60,19 @@ class ScoreDistributionTests(unittest.TestCase):
         np.testing.assert_array_equal(probabilities, probabilities.T)
         forward = self.distribution.top_scorelines(probabilities, "BUF", "KC")
         reverse = self.distribution.top_scorelines(probabilities, "KC", "BUF")
-        # This fixture has two equally probable, mirrored, non-tied finals.
-        self.assertNotEqual(forward[0]["home_score"], forward[0]["away_score"])
-        self.assertEqual(forward[0]["probability"], forward[1]["probability"])
+        # A smooth marginal model may correctly put a tie at the mode. The
+        # ordering must still reverse consistently under swapped teams.
         for first, second in zip(forward, reverse):
             self.assertEqual(first["home_score"], second["away_score"])
             self.assertEqual(first["away_score"], second["home_score"])
             self.assertEqual(first["probability"], second["probability"])
 
-    def test_mode_uses_observed_score_patterns_instead_of_rounding_means(self):
+    def test_mode_uses_smooth_marginals_instead_of_a_single_observed_pair(self):
         home_mean, away_mean = 23.6, 19.2
         probabilities = self.distribution.probabilities(home_mean, away_mean)
         scorelines = self.distribution.top_scorelines(probabilities, "BUF", "KC")
         mode = scorelines[0]
-        self.assertEqual((mode["home_score"], mode["away_score"]), (27, 20))
+        self.assertNotEqual((mode["home_score"], mode["away_score"]), (34, 10))
         self.assertNotEqual(
             (mode["home_score"], mode["away_score"]),
             (round(home_mean), round(away_mean)),
@@ -93,6 +92,21 @@ class ScoreDistributionTests(unittest.TestCase):
             self.assertGreater(row["probability"], 0)
             if index:
                 self.assertLessEqual(row["probability"], scorelines[index - 1]["probability"])
+
+    def test_pair_dependence_is_a_capped_blend_of_empirical_and_marginal_shapes(self):
+        scores = np.array([[34, 10]] * 120 + [[27, 20]] * 20 + [[24, 21]] * 20)
+        independent = ScoreDistribution.fit(scores, np.ones(len(scores)), pair_dependence=0)
+        limited = ScoreDistribution.fit(scores, np.ones(len(scores)), pair_dependence=0.1)
+        empirical = ScoreDistribution.fit(scores, np.ones(len(scores)), pair_dependence=1)
+        np.testing.assert_allclose(limited.base, 0.9 * independent.base + 0.1 * empirical.base)
+        self.assertLess(limited.base[34, 10], empirical.base[34, 10])
+        self.assertGreater(limited.base[27, 20], independent.base[27, 20] * 0.9)
+
+    def test_invalid_pair_dependence_is_rejected(self):
+        for value in (-0.01, 1.01, float("nan")):
+            with self.subTest(value=value):
+                with self.assertRaises(ValueError):
+                    ScoreDistribution.fit([[20, 17]], [1], pair_dependence=value)
 
     def test_smoothing_allows_unseen_scores_but_omits_unobserved_one_point_finals(self):
         probabilities = self.distribution.probabilities(23.6, 19.2)

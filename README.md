@@ -10,15 +10,18 @@ React/TypeScript dashboards and an Azure Functions API using nflverse data.
 
 ## Forecast methodology
 
-The `ridge-joint-score-v4` model fits recency-weighted offense and defense ratings,
+The `ridge-smooth-score-v5` model fits recency-weighted offense and defense ratings,
 with a shared home-field advantage and regularized team deviations. A smoothed
-joint distribution of final scores is exponentially tilted to match expected
-points. Scorelines, win/loss/tie probabilities, and margin intervals all come
-from that distribution. The headline is a central integer score minimizing
-expected point error; most likely exact outcomes are listed separately.
+distribution of final scores is exponentially tilted to match expected points.
+It begins with score marginals and limits the influence of historical exact
+score pairs, so a frequent league-wide final cannot become a generic forecast.
+Scorelines, win/loss/tie probabilities, and margin intervals all come from that
+distribution. The headline is a central integer score minimizing expected point
+error; separately listed exact outcomes are only the highest-probability pairs,
+each still unlikely.
 Scheduled postseason games exclude ties.
 
-Recency half-life (120, 180 or 270 days) and smoothing are selected using inner
+Recency half-life (120, 180 or 270 days) and pair dependence (0%, 5%, or 10%) are selected using inner
 chronological validation. Regression weights are normalized so faster decay
 does not accidentally increase regularization. Four
 expanding-window test blocks evaluate the complete procedure using only earlier
@@ -29,8 +32,9 @@ excludes games on or after that date; downloads and fitted models cache for up
 to an hour.
 
 See [the algorithm and API semantics](docs/score-forecast.md),
-[research and measured tradeoffs](docs/application-research.md), and
-[the 34–10 investigation and v4 results](docs/forecast-recency-investigation.md).
+[research and measured tradeoffs](docs/application-research.md),
+[the v5 score-distribution overhaul](docs/score-distribution-overhaul.md), and
+[the earlier 34–10 and recency investigation](docs/forecast-recency-investigation.md).
 
 ## Run locally
 

@@ -33,7 +33,8 @@ Practice](https://otexts.com/fpp3/accuracy.html),
 
 The full score probability distribution is retained. Its most likely exact
 outcomes remain separately visible with their probabilities. The UI labels the
-headline **Projected score**, explains its purpose, and distinguishes a tied
+headline **Typical score estimate**, explicitly says it is not the most likely
+exact final, and distinguishes a tied
 central estimate from a prediction that a tie is likely. The API method marker
 is `score_prediction.method = minimum_expected_absolute_error`.
 

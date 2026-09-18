@@ -1,0 +1,2204 @@
+{
+  "cutoff": "2026-09-18",
+  "snapshot_sha256": "06e321adec74dedd9c5cf4a3ec8e69f3eabf5d43fc6f014e6d478fa6c877fe3d",
+  "training_games": 872,
+  "before": {
+    "evaluation": {
+      "score_mae": 7.65341522181978,
+      "baseline_score_mae": 7.957507778290285,
+      "predicted_score_mae": 8.391566265060241,
+      "exact_score_accuracy": 0.006024096385542169,
+      "rounded_score_accuracy": 0.0,
+      "scoreline_log_loss": 7.101750427169926,
+      "baseline_scoreline_log_loss": 7.196287316207393,
+      "margin_mae": 10.654891741418679,
+      "margin_interval_coverage": 0.8132530120481928,
+      "margin_interval_width": 36.80421686746988,
+      "outcome_brier_score": 0.4725088160611326,
+      "modal_score_mae": 8.391566265060241,
+      "modal_exact_score_accuracy": 0.006024096385542169,
+      "method": "expanding_window",
+      "folds": [
+        {
+          "training_games": 540,
+          "training_through": "2024-12-29",
+          "from_date": "2024-12-30",
+          "through_date": "2025-09-22",
+          "games": 78,
+          "score_mae": 7.360644565834542,
+          "scoreline_log_loss": 7.247319461131251,
+          "prior_selection": {
+            "games": 48,
+            "selected_prior_games": 512.0,
+            "candidates": [
+              {
+                "prior_games": 32.0,
+                "log_loss": 7.7776832809584375
+              },
+              {
+                "prior_games": 128.0,
+                "log_loss": 7.390001165612088
+              },
+              {
+                "prior_games": 512.0,
+                "log_loss": 7.200145853193601
+              }
+            ],
+            "training_through": "2024-11-11",
+            "from_date": "2024-11-14",
+            "through_date": "2024-12-29"
+          }
+        },
+        {
+          "training_games": 618,
+          "training_through": "2025-09-22",
+          "from_date": "2025-09-25",
+          "through_date": "2025-11-09",
+          "games": 100,
+          "score_mae": 7.504693842696525,
+          "scoreline_log_loss": 7.098423540269074,
+          "prior_selection": {
+            "games": 48,
+            "selected_prior_games": 512.0,
+            "candidates": [
+              {
+                "prior_games": 32.0,
+                "log_loss": 8.493987314695856
+              },
+              {
+                "prior_games": 128.0,
+                "log_loss": 7.9547048250489745
+              },
+              {
+                "prior_games": 512.0,
+                "log_loss": 7.617226598906515
+              }
+            ],
+            "training_through": "2024-12-16",
+            "from_date": "2024-12-19",
+            "through_date": "2025-09-22"
+          }
+        },
+        {
+          "training_games": 718,
+          "training_through": "2025-11-09",
+          "from_date": "2025-11-10",
+          "through_date": "2025-12-21",
+          "games": 91,
+          "score_mae": 7.413266968422655,
+          "scoreline_log_loss": 6.981761805499022,
+          "prior_selection": {
+            "games": 48,
+            "selected_prior_games": 512.0,
+            "candidates": [
+              {
+                "prior_games": 32.0,
+                "log_loss": 7.742199921823739
+              },
+              {
+                "prior_games": 128.0,
+                "log_loss": 7.332034424387842
+              },
+              {
+                "prior_games": 512.0,
+                "log_loss": 7.072662802823625
+              }
+            ],
+            "training_through": "2025-01-19",
+            "from_date": "2025-01-26",
+            "through_date": "2025-11-09"
+          }
+        },
+        {
+          "training_games": 809,
+          "training_through": "2025-12-21",
+          "from_date": "2025-12-22",
+          "through_date": "2026-09-17",
+          "games": 63,
+          "score_mae": 8.598839668459659,
+          "scoreline_log_loss": 7.1001197702358745,
+          "prior_selection": {
+            "games": 48,
+            "selected_prior_games": 512.0,
+            "candidates": [
+              {
+                "prior_games": 32.0,
+                "log_loss": 7.746750993406965
+              },
+              {
+                "prior_games": 128.0,
+                "log_loss": 7.37364919799541
+              },
+              {
+                "prior_games": 512.0,
+                "log_loss": 7.176671631463502
+              }
+            ],
+            "training_through": "2025-10-02",
+            "from_date": "2025-10-05",
+            "through_date": "2025-12-21"
+          }
+        }
+      ],
+      "games": 332,
+      "decisive_games": 331,
+      "skipped_games": 0,
+      "from_date": "2024-12-30",
+      "through_date": "2026-09-17",
+      "training_through": "2024-12-29",
+      "training_games": 540,
+      "score_rmse": 9.618683481318127,
+      "winner_accuracy": 0.6072507552870091,
+      "home_baseline_accuracy": 0.552870090634441,
+      "brier_score": 0.23444012385109236,
+      "baseline_brier_score": 0.247405253188011,
+      "calibration_bins": [
+        {
+          "low": 0.0,
+          "high": 0.2,
+          "games": 0,
+          "predicted": null,
+          "observed": null
+        },
+        {
+          "low": 0.2,
+          "high": 0.4,
+          "games": 23,
+          "predicted": 0.36070042712545797,
+          "observed": 0.391304347826087
+        },
+        {
+          "low": 0.4,
+          "high": 0.6,
+          "games": 194,
+          "predicted": 0.5144572819283761,
+          "observed": 0.5
+        },
+        {
+          "low": 0.6,
+          "high": 0.8,
+          "games": 114,
+          "predicted": 0.6666689581488816,
+          "observed": 0.6754385964912281
+        },
+        {
+          "low": 0.8,
+          "high": 1.0,
+          "games": 0,
+          "predicted": null,
+          "observed": null
+        }
+      ],
+      "calibration_games": 331,
+      "projected_unique_scorelines": 9,
+      "most_common_projected_score_share": 0.37349397590361444
+    },
+    "hou_cin": {
+      "home_team": "HOU",
+      "away_team": "CIN",
+      "neutral": false,
+      "allow_ties": true,
+      "home_score": 26.201248510592617,
+      "away_score": 21.590581215329756,
+      "score_prediction": {
+        "home_score": 34,
+        "away_score": 10,
+        "probability": 0.006376904225984518
+      },
+      "top_scorelines": [
+        {
+          "home_score": 34,
+          "away_score": 10,
+          "probability": 0.006376904225984518
+        },
+        {
+          "home_score": 27,
+          "away_score": 20,
+          "probability": 0.006104560112270893
+        },
+        {
+          "home_score": 23,
+          "away_score": 20,
+          "probability": 0.005897477672211084
+        }
+      ],
+      "margin": 4.610667295262861,
+      "total": 47.79182972592237,
+      "favorite": "HOU",
+      "home_games": 58,
+      "away_games": 52,
+      "low_data": false,
+      "home_win_probability": 0.6131279814513945,
+      "away_win_probability": 0.36455038091345543,
+      "tie_probability": 0.022321637635150476,
+      "margin_stddev": 14.415655364102644,
+      "margin_interval": {
+        "coverage": 0.8,
+        "low": -14,
+        "high": 24
+      }
+    },
+    "assumptions": {
+      "ridge_alpha": 20.0,
+      "recency_half_life_days": 365.0,
+      "joint_prior_games": 512.0,
+      "joint_prior_candidates": [
+        32.0,
+        128.0,
+        512.0
+      ],
+      "prior_selection": {
+        "games": 48,
+        "selected_prior_games": 512.0,
+        "candidates": [
+          {
+            "prior_games": 32.0,
+            "log_loss": 7.280647562251925
+          },
+          {
+            "prior_games": 128.0,
+            "log_loss": 6.978888327451979
+          },
+          {
+            "prior_games": 512.0,
+            "log_loss": 6.836222973948686
+          }
+        ],
+        "training_through": "2025-11-06",
+        "from_date": "2025-11-09",
+        "through_date": "2026-09-17"
+      },
+      "marginal_prior_scores": 2.0,
+      "score_support_maximum": 110,
+      "scoreline_method": "Recency-weighted joint final-score frequencies, pooled across home/away orientations and shrunk toward smoothed independent marginals. Minimum-relative-entropy exponential tilting matches the two ridge score means. Postseason scorelines exclude ties. The joint mode predicts a final score.",
+      "scoreline_log_loss_baseline": "The same training-only league score distribution without matchup adjustments; natural logs, probabilities floored at 1e-15.",
+      "evaluation_fraction_of_dates": 0.4,
+      "evaluation_folds": 4,
+      "evaluation_method": "Expanding-window evaluation: start with the first 60% of dates, then evaluate up to four later blocks. Each block is predicted using only strictly earlier dates. Production refits all completed games.",
+      "uncertainty_method": "Central discrete quantiles from the joint score distribution."
+    },
+    "upcoming": [
+      {
+        "home_team": "ATL",
+        "away_team": "CAR",
+        "neutral": false,
+        "allow_ties": true,
+        "home_score": 24.635958833820084,
+        "away_score": 21.063219243061784,
+        "score_prediction": {
+          "home_score": 23,
+          "away_score": 20,
+          "probability": 0.006156970374209077
+        },
+        "top_scorelines": [
+          {
+            "home_score": 23,
+            "away_score": 20,
+            "probability": 0.006156970374209077
+          },
+          {
+            "home_score": 20,
+            "away_score": 17,
+            "probability": 0.006153225884399016
+          },
+          {
+            "home_score": 27,
+            "away_score": 20,
+            "probability": 0.006006353675296071
+          }
+        ],
+        "margin": 3.5727395907582995,
+        "total": 45.699178076881864,
+        "favorite": "ATL",
+        "home_games": 52,
+        "away_games": 53,
+        "low_data": false,
+        "home_win_probability": 0.5865807786206376,
+        "away_win_probability": 0.390485222497662,
+        "tie_probability": 0.022933998881700432,
+        "margin_stddev": 14.266427127882059,
+        "margin_interval": {
+          "coverage": 0.8,
+          "low": -15,
+          "high": 22
+        }
+      },
+      {
+        "home_team": "BAL",
+        "away_team": "NO",
+        "neutral": false,
+        "allow_ties": true,
+        "home_score": 25.978741600860396,
+        "away_score": 19.85324155307246,
+        "score_prediction": {
+          "home_score": 34,
+          "away_score": 10,
+          "probability": 0.0075971696775363855
+        },
+        "top_scorelines": [
+          {
+            "home_score": 34,
+            "away_score": 10,
+            "probability": 0.0075971696775363855
+          },
+          {
+            "home_score": 27,
+            "away_score": 20,
+            "probability": 0.006171054194475696
+          },
+          {
+            "home_score": 23,
+            "away_score": 20,
+            "probability": 0.006014751295731916
+          }
+        ],
+        "margin": 6.125500047787934,
+        "total": 45.83198315393285,
+        "favorite": "BAL",
+        "home_games": 56,
+        "away_games": 52,
+        "low_data": false,
+        "home_win_probability": 0.6540639235616038,
+        "away_win_probability": 0.32435650056109105,
+        "tie_probability": 0.021579575877305246,
+        "margin_stddev": 14.267661516832653,
+        "margin_interval": {
+          "coverage": 0.8,
+          "low": -12,
+          "high": 24
+        }
+      },
+      {
+        "home_team": "CHI",
+        "away_team": "MIN",
+        "neutral": false,
+        "allow_ties": true,
+        "home_score": 23.556415774629844,
+        "away_score": 21.768797518424986,
+        "score_prediction": {
+          "home_score": 20,
+          "away_score": 17,
+          "probability": 0.006223287715397135
+        },
+        "top_scorelines": [
+          {
+            "home_score": 20,
+            "away_score": 17,
+            "probability": 0.006223287715397135
+          },
+          {
+            "home_score": 23,
+            "away_score": 20,
+            "probability": 0.006165356754195126
+          },
+          {
+            "home_score": 17,
+            "away_score": 20,
+            "probability": 0.005902764104647858
+          }
+        ],
+        "margin": 1.7876182562048584,
+        "total": 45.32521329305483,
+        "favorite": "CHI",
+        "home_games": 54,
+        "away_games": 53,
+        "low_data": false,
+        "home_win_probability": 0.5377629273555982,
+        "away_win_probability": 0.4387157172425611,
+        "tie_probability": 0.023521355401840534,
+        "margin_stddev": 14.242391356305736,
+        "margin_interval": {
+          "coverage": 0.8,
+          "low": -17,
+          "high": 21
+        }
+      },
+      {
+        "home_team": "HOU",
+        "away_team": "CIN",
+        "neutral": false,
+        "allow_ties": true,
+        "home_score": 26.201248510592617,
+        "away_score": 21.590581215329756,
+        "score_prediction": {
+          "home_score": 34,
+          "away_score": 10,
+          "probability": 0.006376904225984518
+        },
+        "top_scorelines": [
+          {
+            "home_score": 34,
+            "away_score": 10,
+            "probability": 0.006376904225984518
+          },
+          {
+            "home_score": 27,
+            "away_score": 20,
+            "probability": 0.006104560112270893
+          },
+          {
+            "home_score": 23,
+            "away_score": 20,
+            "probability": 0.005897477672211084
+          }
+        ],
+        "margin": 4.610667295262861,
+        "total": 47.79182972592237,
+        "favorite": "HOU",
+        "home_games": 58,
+        "away_games": 52,
+        "low_data": false,
+        "home_win_probability": 0.6131279814513945,
+        "away_win_probability": 0.36455038091345543,
+        "tie_probability": 0.022321637635150476,
+        "margin_stddev": 14.415655364102644,
+        "margin_interval": {
+          "coverage": 0.8,
+          "low": -14,
+          "high": 24
+        }
+      },
+      {
+        "home_team": "NE",
+        "away_team": "PIT",
+        "neutral": false,
+        "allow_ties": true,
+        "home_score": 22.705008754090166,
+        "away_score": 19.537692472687848,
+        "score_prediction": {
+          "home_score": 20,
+          "away_score": 17,
+          "probability": 0.0069723134726702414
+        },
+        "top_scorelines": [
+          {
+            "home_score": 20,
+            "away_score": 17,
+            "probability": 0.0069723134726702414
+          },
+          {
+            "home_score": 17,
+            "away_score": 20,
+            "probability": 0.006329063931806684
+          },
+          {
+            "home_score": 23,
+            "away_score": 20,
+            "probability": 0.006266219459477879
+          }
+        ],
+        "margin": 3.167316281402318,
+        "total": 42.24270122677801,
+        "favorite": "NE",
+        "home_games": 56,
+        "away_games": 55,
+        "low_data": false,
+        "home_win_probability": 0.5769856336476771,
+        "away_win_probability": 0.3992717218567478,
+        "tie_probability": 0.023742644495575754,
+        "margin_stddev": 14.008107820764847,
+        "margin_interval": {
+          "coverage": 0.8,
+          "low": -15,
+          "high": 21
+        }
+      },
+      {
+        "home_team": "NYJ",
+        "away_team": "GB",
+        "neutral": false,
+        "allow_ties": true,
+        "home_score": 20.866316594687778,
+        "away_score": 24.184339471651185,
+        "score_prediction": {
+          "home_score": 17,
+          "away_score": 20,
+          "probability": 0.006325975345506325
+        },
+        "top_scorelines": [
+          {
+            "home_score": 17,
+            "away_score": 20,
+            "probability": 0.006325975345506325
+          },
+          {
+            "home_score": 20,
+            "away_score": 23,
+            "probability": 0.006207766288216041
+          },
+          {
+            "home_score": 20,
+            "away_score": 27,
+            "probability": 0.005950405037836274
+          }
+        ],
+        "margin": -3.3180228769634077,
+        "total": 45.05065606633896,
+        "favorite": "GB",
+        "home_games": 52,
+        "away_games": 56,
+        "low_data": false,
+        "home_win_probability": 0.3969335303450377,
+        "away_win_probability": 0.5799521366464152,
+        "tie_probability": 0.02311433300854736,
+        "margin_stddev": 14.220327434252178,
+        "margin_interval": {
+          "coverage": 0.8,
+          "low": -22,
+          "high": 15
+        }
+      },
+      {
+        "home_team": "TB",
+        "away_team": "CLE",
+        "neutral": false,
+        "allow_ties": true,
+        "home_score": 24.697560595058867,
+        "away_score": 19.302725434670517,
+        "score_prediction": {
+          "home_score": 34,
+          "away_score": 10,
+          "probability": 0.007240138700367292
+        },
+        "top_scorelines": [
+          {
+            "home_score": 34,
+            "away_score": 10,
+            "probability": 0.007240138700367292
+          },
+          {
+            "home_score": 20,
+            "away_score": 17,
+            "probability": 0.00651735949007736
+          },
+          {
+            "home_score": 23,
+            "away_score": 20,
+            "probability": 0.006173871974220611
+          }
+        ],
+        "margin": 5.39483516038835,
+        "total": 44.00028602972938,
+        "favorite": "TB",
+        "home_games": 55,
+        "away_games": 53,
+        "low_data": false,
+        "home_win_probability": 0.6364871086203013,
+        "away_win_probability": 0.34124248034546756,
+        "tie_probability": 0.022270411034231774,
+        "margin_stddev": 14.129891411171807,
+        "margin_interval": {
+          "coverage": 0.8,
+          "low": -13,
+          "high": 24
+        }
+      },
+      {
+        "home_team": "TEN",
+        "away_team": "PHI",
+        "neutral": false,
+        "allow_ties": true,
+        "home_score": 19.348987645365657,
+        "away_score": 24.647664024508543,
+        "score_prediction": {
+          "home_score": 10,
+          "away_score": 34,
+          "probability": 0.007175327319475991
+        },
+        "top_scorelines": [
+          {
+            "home_score": 10,
+            "away_score": 34,
+            "probability": 0.007175327319475991
+          },
+          {
+            "home_score": 17,
+            "away_score": 20,
+            "probability": 0.00652435667238176
+          },
+          {
+            "home_score": 20,
+            "away_score": 23,
+            "probability": 0.006180808948807057
+          }
+        ],
+        "margin": -5.298676379142886,
+        "total": 43.9966516698742,
+        "favorite": "PHI",
+        "home_games": 52,
+        "away_games": 58,
+        "low_data": false,
+        "home_win_probability": 0.34372915695656303,
+        "away_win_probability": 0.6339432848435665,
+        "tie_probability": 0.02232755819987083,
+        "margin_stddev": 14.130436062824144,
+        "margin_interval": {
+          "coverage": 0.8,
+          "low": -24,
+          "high": 13
+        }
+      },
+      {
+        "home_team": "DEN",
+        "away_team": "JAX",
+        "neutral": false,
+        "allow_ties": true,
+        "home_score": 23.533697916125973,
+        "away_score": 21.204094794985902,
+        "score_prediction": {
+          "home_score": 20,
+          "away_score": 17,
+          "probability": 0.0063938508111779655
+        },
+        "top_scorelines": [
+          {
+            "home_score": 20,
+            "away_score": 17,
+            "probability": 0.0063938508111779655
+          },
+          {
+            "home_score": 23,
+            "away_score": 20,
+            "probability": 0.006219622048381082
+          },
+          {
+            "home_score": 17,
+            "away_score": 20,
+            "probability": 0.005965659554848802
+          }
+        ],
+        "margin": 2.329603121140071,
+        "total": 44.73779271111188,
+        "favorite": "DEN",
+        "home_games": 55,
+        "away_games": 53,
+        "low_data": false,
+        "home_win_probability": 0.5528999953724955,
+        "away_win_probability": 0.42362115361018,
+        "tie_probability": 0.023478851017324304,
+        "margin_stddev": 14.200067078416364,
+        "margin_interval": {
+          "coverage": 0.8,
+          "low": -16,
+          "high": 21
+        }
+      },
+      {
+        "home_team": "LAC",
+        "away_team": "LV",
+        "neutral": false,
+        "allow_ties": true,
+        "home_score": 23.385049287373484,
+        "away_score": 18.293429854496857,
+        "score_prediction": {
+          "home_score": 34,
+          "away_score": 10,
+          "probability": 0.007023519517712081
+        },
+        "top_scorelines": [
+          {
+            "home_score": 34,
+            "away_score": 10,
+            "probability": 0.007023519517712081
+          },
+          {
+            "home_score": 20,
+            "away_score": 17,
+            "probability": 0.007014948008971976
+          },
+          {
+            "home_score": 20,
+            "away_score": 10,
+            "probability": 0.006509180563294134
+          }
+        ],
+        "margin": 5.091619432876627,
+        "total": 41.67847914187034,
+        "favorite": "LAC",
+        "home_games": 54,
+        "away_games": 52,
+        "low_data": false,
+        "home_win_probability": 0.6301145074467617,
+        "away_win_probability": 0.3469116806563314,
+        "tie_probability": 0.022973811896907288,
+        "margin_stddev": 13.943147298689086,
+        "margin_interval": {
+          "coverage": 0.8,
+          "low": -13,
+          "high": 24
+        }
+      },
+      {
+        "home_team": "ARI",
+        "away_team": "SEA",
+        "neutral": false,
+        "allow_ties": true,
+        "home_score": 21.064602919084628,
+        "away_score": 24.677914198754138,
+        "score_prediction": {
+          "home_score": 20,
+          "away_score": 23,
+          "probability": 0.006152728770675345
+        },
+        "top_scorelines": [
+          {
+            "home_score": 20,
+            "away_score": 23,
+            "probability": 0.006152728770675345
+          },
+          {
+            "home_score": 17,
+            "away_score": 20,
+            "probability": 0.006141191639515264
+          },
+          {
+            "home_score": 20,
+            "away_score": 27,
+            "probability": 0.0060119110924440125
+          }
+        ],
+        "margin": -3.61331127966951,
+        "total": 45.742517117838766,
+        "favorite": "SEA",
+        "home_games": 52,
+        "away_games": 55,
+        "low_data": false,
+        "home_win_probability": 0.3894282254557671,
+        "away_win_probability": 0.587658868394494,
+        "tie_probability": 0.02291290614973891,
+        "margin_stddev": 14.2694580929929,
+        "margin_interval": {
+          "coverage": 0.8,
+          "low": -22,
+          "high": 15
+        }
+      },
+      {
+        "home_team": "DAL",
+        "away_team": "WAS",
+        "neutral": false,
+        "allow_ties": true,
+        "home_score": 26.505765034247922,
+        "away_score": 24.754632944185982,
+        "score_prediction": {
+          "home_score": 27,
+          "away_score": 24,
+          "probability": 0.006010035658901244
+        },
+        "top_scorelines": [
+          {
+            "home_score": 27,
+            "away_score": 24,
+            "probability": 0.006010035658901244
+          },
+          {
+            "home_score": 24,
+            "away_score": 27,
+            "probability": 0.005722472434666951
+          },
+          {
+            "home_score": 27,
+            "away_score": 20,
+            "probability": 0.005549796958118113
+          }
+        ],
+        "margin": 1.7511320900619403,
+        "total": 51.2603979784339,
+        "favorite": "DAL",
+        "home_games": 53,
+        "away_games": 55,
+        "low_data": false,
+        "home_win_probability": 0.5352956044846328,
+        "away_win_probability": 0.44133434573558283,
+        "tie_probability": 0.023370049779785032,
+        "margin_stddev": 14.642227002594542,
+        "margin_interval": {
+          "coverage": 0.8,
+          "low": -17,
+          "high": 21
+        }
+      },
+      {
+        "home_team": "SF",
+        "away_team": "MIA",
+        "neutral": false,
+        "allow_ties": true,
+        "home_score": 25.43677599020641,
+        "away_score": 20.552360796978633,
+        "score_prediction": {
+          "home_score": 34,
+          "away_score": 10,
+          "probability": 0.006765929559936405
+        },
+        "top_scorelines": [
+          {
+            "home_score": 34,
+            "away_score": 10,
+            "probability": 0.006765929559936405
+          },
+          {
+            "home_score": 27,
+            "away_score": 20,
+            "probability": 0.006122108912241318
+          },
+          {
+            "home_score": 23,
+            "away_score": 20,
+            "probability": 0.0060881765810420286
+          }
+        ],
+        "margin": 4.8844151932277775,
+        "total": 45.989136787185046,
+        "favorite": "SF",
+        "home_games": 57,
+        "away_games": 53,
+        "low_data": false,
+        "home_win_probability": 0.6215548795079443,
+        "away_win_probability": 0.35615104179621065,
+        "tie_probability": 0.022294078695845494,
+        "margin_stddev": 14.284549874602067,
+        "margin_interval": {
+          "coverage": 0.8,
+          "low": -14,
+          "high": 24
+        }
+      },
+      {
+        "home_team": "KC",
+        "away_team": "IND",
+        "neutral": false,
+        "allow_ties": true,
+        "home_score": 25.344565643470926,
+        "away_score": 20.803944598278427,
+        "score_prediction": {
+          "home_score": 34,
+          "away_score": 10,
+          "probability": 0.0065329308788101515
+        },
+        "top_scorelines": [
+          {
+            "home_score": 34,
+            "away_score": 10,
+            "probability": 0.0065329308788101515
+          },
+          {
+            "home_score": 27,
+            "away_score": 20,
+            "probability": 0.006103013548315287
+          },
+          {
+            "home_score": 23,
+            "away_score": 20,
+            "probability": 0.0060897537770768125
+          }
+        ],
+        "margin": 4.540621045192498,
+        "total": 46.14851024174935,
+        "favorite": "KC",
+        "home_games": 59,
+        "away_games": 52,
+        "low_data": false,
+        "home_win_probability": 0.6123302829345642,
+        "away_win_probability": 0.365214273698035,
+        "tie_probability": 0.022455443367401157,
+        "margin_stddev": 14.297060127843054,
+        "margin_interval": {
+          "coverage": 0.8,
+          "low": -14,
+          "high": 24
+        }
+      },
+      {
+        "home_team": "LA",
+        "away_team": "NYG",
+        "neutral": false,
+        "allow_ties": true,
+        "home_score": 26.491551083172162,
+        "away_score": 19.848825302488578,
+        "score_prediction": {
+          "home_score": 34,
+          "away_score": 10,
+          "probability": 0.007883663668829382
+        },
+        "top_scorelines": [
+          {
+            "home_score": 34,
+            "away_score": 10,
+            "probability": 0.007883663668829382
+          },
+          {
+            "home_score": 27,
+            "away_score": 20,
+            "probability": 0.0061936849802445865
+          },
+          {
+            "home_score": 23,
+            "away_score": 20,
+            "probability": 0.005922465306436985
+          }
+        ],
+        "margin": 6.642725780683584,
+        "total": 46.34037638566074,
+        "favorite": "LA",
+        "home_games": 58,
+        "away_games": 52,
+        "low_data": false,
+        "home_win_probability": 0.6667986729670655,
+        "away_win_probability": 0.31200615362903156,
+        "tie_probability": 0.021195173403902715,
+        "margin_stddev": 14.304694112884187,
+        "margin_interval": {
+          "coverage": 0.8,
+          "low": -11,
+          "high": 25
+        }
+      },
+      {
+        "home_team": "GB",
+        "away_team": "ATL",
+        "neutral": false,
+        "allow_ties": true,
+        "home_score": 25.0544812577371,
+        "away_score": 20.166468675658468,
+        "score_prediction": {
+          "home_score": 34,
+          "away_score": 10,
+          "probability": 0.006834515535901699
+        },
+        "top_scorelines": [
+          {
+            "home_score": 34,
+            "away_score": 10,
+            "probability": 0.006834515535901699
+          },
+          {
+            "home_score": 20,
+            "away_score": 17,
+            "probability": 0.006244248981348706
+          },
+          {
+            "home_score": 23,
+            "away_score": 20,
+            "probability": 0.006147806131559142
+          }
+        ],
+        "margin": 4.88801258207863,
+        "total": 45.220949933395566,
+        "favorite": "GB",
+        "home_games": 56,
+        "away_games": 52,
+        "low_data": false,
+        "home_win_probability": 0.6221734573277009,
+        "away_win_probability": 0.3554505760073204,
+        "tie_probability": 0.022375966664978687,
+        "margin_stddev": 14.22727009268254,
+        "margin_interval": {
+          "coverage": 0.8,
+          "low": -13,
+          "high": 24
+        }
+      }
+    ],
+    "upcoming_34_10": 9,
+    "upcoming_unique_scorelines": 7,
+    "upcoming_most_repeated": 8
+  },
+  "after": {
+    "evaluation": {
+      "score_mae": 7.645999388187632,
+      "baseline_score_mae": 7.957507778290285,
+      "predicted_score_mae": 7.683734939759036,
+      "exact_score_accuracy": 0.0030120481927710845,
+      "rounded_score_accuracy": 0.0030120481927710845,
+      "scoreline_log_loss": 7.103872240183387,
+      "baseline_scoreline_log_loss": 7.206565129668798,
+      "margin_mae": 10.535492714500954,
+      "margin_interval_coverage": 0.8253012048192772,
+      "margin_interval_width": 36.56024096385542,
+      "outcome_brier_score": 0.4633455460394062,
+      "modal_score_mae": 8.640060240963855,
+      "modal_exact_score_accuracy": 0.006024096385542169,
+      "method": "expanding_window",
+      "folds": [
+        {
+          "training_games": 540,
+          "training_through": "2024-12-29",
+          "from_date": "2024-12-30",
+          "through_date": "2025-09-22",
+          "games": 78,
+          "score_mae": 7.296260638797294,
+          "scoreline_log_loss": 7.176508638186717,
+          "prior_selection": {
+            "games": 48,
+            "selected_prior_games": 512.0,
+            "candidates": [
+              {
+                "prior_games": 32.0,
+                "log_loss": 7.718812629608205
+              },
+              {
+                "prior_games": 128.0,
+                "log_loss": 7.350143882236928
+              },
+              {
+                "prior_games": 512.0,
+                "log_loss": 7.204191238275619
+              }
+            ],
+            "selected_half_life_days": 120.0,
+            "recency_candidates": [
+              {
+                "half_life_days": 120.0,
+                "score_mse": 93.87586324696714,
+                "games": 103
+              },
+              {
+                "half_life_days": 180.0,
+                "score_mse": 94.00672457044784,
+                "games": 103
+              },
+              {
+                "half_life_days": 270.0,
+                "score_mse": 94.51325561412611,
+                "games": 103
+              }
+            ],
+            "training_through": "2024-11-11",
+            "from_date": "2024-11-14",
+            "through_date": "2024-12-29"
+          }
+        },
+        {
+          "training_games": 618,
+          "training_through": "2025-09-22",
+          "from_date": "2025-09-25",
+          "through_date": "2025-11-09",
+          "games": 100,
+          "score_mae": 7.612848830867387,
+          "scoreline_log_loss": 7.158478358588804,
+          "prior_selection": {
+            "games": 48,
+            "selected_prior_games": 512.0,
+            "candidates": [
+              {
+                "prior_games": 32.0,
+                "log_loss": 8.31707090565814
+              },
+              {
+                "prior_games": 128.0,
+                "log_loss": 7.806324205231458
+              },
+              {
+                "prior_games": 512.0,
+                "log_loss": 7.537981876385892
+              }
+            ],
+            "selected_half_life_days": 120.0,
+            "recency_candidates": [
+              {
+                "half_life_days": 120.0,
+                "score_mse": 97.64458150774303,
+                "games": 109
+              },
+              {
+                "half_life_days": 180.0,
+                "score_mse": 98.21472689923505,
+                "games": 109
+              },
+              {
+                "half_life_days": 270.0,
+                "score_mse": 98.99358939526303,
+                "games": 109
+              }
+            ],
+            "training_through": "2024-12-16",
+            "from_date": "2024-12-19",
+            "through_date": "2025-09-22"
+          }
+        },
+        {
+          "training_games": 718,
+          "training_through": "2025-11-09",
+          "from_date": "2025-11-10",
+          "through_date": "2025-12-21",
+          "games": 91,
+          "score_mae": 7.386572884743747,
+          "scoreline_log_loss": 6.982746998875626,
+          "prior_selection": {
+            "games": 48,
+            "selected_prior_games": 512.0,
+            "candidates": [
+              {
+                "prior_games": 32.0,
+                "log_loss": 7.696908840027952
+              },
+              {
+                "prior_games": 128.0,
+                "log_loss": 7.290408934174572
+              },
+              {
+                "prior_games": 512.0,
+                "log_loss": 7.041940952359179
+              }
+            ],
+            "selected_half_life_days": 270.0,
+            "recency_candidates": [
+              {
+                "half_life_days": 120.0,
+                "score_mse": 93.33881701495781,
+                "games": 151
+              },
+              {
+                "half_life_days": 180.0,
+                "score_mse": 92.96183289940066,
+                "games": 151
+              },
+              {
+                "half_life_days": 270.0,
+                "score_mse": 92.8820532967994,
+                "games": 151
+              }
+            ],
+            "training_through": "2025-01-19",
+            "from_date": "2025-01-26",
+            "through_date": "2025-11-09"
+          }
+        },
+        {
+          "training_games": 809,
+          "training_through": "2025-12-21",
+          "from_date": "2025-12-22",
+          "through_date": "2026-09-17",
+          "games": 63,
+          "score_mae": 8.506356372280726,
+          "scoreline_log_loss": 7.102223765170762,
+          "prior_selection": {
+            "games": 48,
+            "selected_prior_games": 512.0,
+            "candidates": [
+              {
+                "prior_games": 32.0,
+                "log_loss": 7.739566988189722
+              },
+              {
+                "prior_games": 128.0,
+                "log_loss": 7.380687338593748
+              },
+              {
+                "prior_games": 512.0,
+                "log_loss": 7.220222882766237
+              }
+            ],
+            "selected_half_life_days": 180.0,
+            "recency_candidates": [
+              {
+                "half_life_days": 120.0,
+                "score_mse": 90.35328247999246,
+                "games": 174
+              },
+              {
+                "half_life_days": 180.0,
+                "score_mse": 90.10507622936416,
+                "games": 174
+              },
+              {
+                "half_life_days": 270.0,
+                "score_mse": 90.23087592366596,
+                "games": 174
+              }
+            ],
+            "training_through": "2025-10-02",
+            "from_date": "2025-10-05",
+            "through_date": "2025-12-21"
+          }
+        }
+      ],
+      "games": 332,
+      "decisive_games": 331,
+      "skipped_games": 0,
+      "from_date": "2024-12-30",
+      "through_date": "2026-09-17",
+      "training_through": "2024-12-29",
+      "training_games": 540,
+      "score_rmse": 9.570287348483904,
+      "winner_accuracy": 0.6314199395770392,
+      "home_baseline_accuracy": 0.552870090634441,
+      "brier_score": 0.22979997067118557,
+      "baseline_brier_score": 0.247405253188011,
+      "calibration_bins": [
+        {
+          "low": 0.0,
+          "high": 0.2,
+          "games": 0,
+          "predicted": null,
+          "observed": null
+        },
+        {
+          "low": 0.2,
+          "high": 0.4,
+          "games": 47,
+          "predicted": 0.33082703881681996,
+          "observed": 0.2978723404255319
+        },
+        {
+          "low": 0.4,
+          "high": 0.6,
+          "games": 152,
+          "predicted": 0.508304376761067,
+          "observed": 0.5197368421052632
+        },
+        {
+          "low": 0.6,
+          "high": 0.8,
+          "games": 118,
+          "predicted": 0.6851301625336753,
+          "observed": 0.6610169491525424
+        },
+        {
+          "low": 0.8,
+          "high": 1.0,
+          "games": 14,
+          "predicted": 0.8276622809354189,
+          "observed": 0.8571428571428571
+        }
+      ],
+      "calibration_games": 331,
+      "projected_unique_scorelines": 126,
+      "most_common_projected_score_share": 0.045180722891566265
+    },
+    "hou_cin": {
+      "home_team": "HOU",
+      "away_team": "CIN",
+      "neutral": false,
+      "allow_ties": true,
+      "home_score": 28.237336664333714,
+      "away_score": 21.947240107121658,
+      "score_prediction": {
+        "home_score": 28,
+        "away_score": 22,
+        "probability": 0.0011125956447474653,
+        "method": "minimum_expected_absolute_error"
+      },
+      "top_scorelines": [
+        {
+          "home_score": 34,
+          "away_score": 10,
+          "probability": 0.006522188295476716
+        },
+        {
+          "home_score": 27,
+          "away_score": 20,
+          "probability": 0.00566427894049035
+        },
+        {
+          "home_score": 27,
+          "away_score": 24,
+          "probability": 0.005100910735296515
+        }
+      ],
+      "margin": 6.290096557212056,
+      "total": 50.18457677145537,
+      "favorite": "HOU",
+      "home_games": 58,
+      "away_games": 52,
+      "home_current_season_games": 1,
+      "away_current_season_games": 1,
+      "low_data": false,
+      "home_win_probability": 0.652376583994104,
+      "away_win_probability": 0.32106393770215147,
+      "tie_probability": 0.026559478303744326,
+      "margin_stddev": 14.625646853046355,
+      "margin_interval": {
+        "coverage": 0.8,
+        "low": -12,
+        "high": 25
+      }
+    },
+    "assumptions": {
+      "ridge_alpha": 20.0,
+      "recency_half_life_days": 180.0,
+      "recency_candidates": [
+        120.0,
+        180.0,
+        270.0
+      ],
+      "regression_weight_normalization": "mean_one",
+      "history_weight_by_season": [
+        {
+          "season": 2026,
+          "games": 17,
+          "weight_share": 0.12882007771776266
+        },
+        {
+          "season": 2025,
+          "games": 285,
+          "weight_share": 0.6667898388734087
+        },
+        {
+          "season": 2024,
+          "games": 285,
+          "weight_share": 0.1639834738932515
+        },
+        {
+          "season": 2023,
+          "games": 285,
+          "weight_share": 0.04040660951557794
+        }
+      ],
+      "point_forecast_method": "minimum_expected_absolute_error",
+      "joint_prior_games": 512.0,
+      "joint_prior_candidates": [
+        32.0,
+        128.0,
+        512.0
+      ],
+      "prior_selection": {
+        "games": 48,
+        "selected_prior_games": 512.0,
+        "candidates": [
+          {
+            "prior_games": 32.0,
+            "log_loss": 7.265725550015333
+          },
+          {
+            "prior_games": 128.0,
+            "log_loss": 6.982560593769087
+          },
+          {
+            "prior_games": 512.0,
+            "log_loss": 6.879947594556188
+          }
+        ],
+        "selected_half_life_days": 180.0,
+        "recency_candidates": [
+          {
+            "half_life_days": 120.0,
+            "score_mse": 94.4812285557719,
+            "games": 166
+          },
+          {
+            "half_life_days": 180.0,
+            "score_mse": 94.23147423280454,
+            "games": 166
+          },
+          {
+            "half_life_days": 270.0,
+            "score_mse": 94.35761077698612,
+            "games": 166
+          }
+        ],
+        "training_through": "2025-11-06",
+        "from_date": "2025-11-09",
+        "through_date": "2026-09-17"
+      },
+      "marginal_prior_scores": 2.0,
+      "score_support_maximum": 110,
+      "scoreline_method": "Recency-weighted joint final-score frequencies, pooled across home/away orientations and shrunk toward smoothed independent marginals. Minimum-relative-entropy exponential tilting matches the two ridge score means. Postseason scorelines exclude ties. The central integer projection minimizes expected absolute point error on supported score pairs.",
+      "scoreline_log_loss_baseline": "The same training-only league score distribution without matchup adjustments; natural logs, probabilities floored at 1e-15.",
+      "evaluation_fraction_of_dates": 0.4,
+      "evaluation_folds": 4,
+      "evaluation_method": "Expanding-window evaluation: start with the first 60% of dates, then evaluate up to four later blocks. Each block is predicted using only strictly earlier dates. Production refits all completed games.",
+      "uncertainty_method": "Central discrete quantiles from the joint score distribution."
+    },
+    "upcoming": [
+      {
+        "home_team": "ATL",
+        "away_team": "CAR",
+        "neutral": false,
+        "allow_ties": true,
+        "home_score": 25.21258744960192,
+        "away_score": 21.727684308532595,
+        "score_prediction": {
+          "home_score": 25,
+          "away_score": 21,
+          "probability": 0.00029503078741005496,
+          "method": "minimum_expected_absolute_error"
+        },
+        "top_scorelines": [
+          {
+            "home_score": 27,
+            "away_score": 20,
+            "probability": 0.005639378241859921
+          },
+          {
+            "home_score": 34,
+            "away_score": 10,
+            "probability": 0.005471649922866867
+          },
+          {
+            "home_score": 27,
+            "away_score": 24,
+            "probability": 0.00503930143767773
+          }
+        ],
+        "margin": 3.4849031410693243,
+        "total": 46.940271758134514,
+        "favorite": "ATL",
+        "home_games": 52,
+        "away_games": 53,
+        "home_current_season_games": 1,
+        "away_current_season_games": 1,
+        "low_data": false,
+        "home_win_probability": 0.5809688105844003,
+        "away_win_probability": 0.39039290221354594,
+        "tie_probability": 0.028638287202054077,
+        "margin_stddev": 14.399929113200825,
+        "margin_interval": {
+          "coverage": 0.8,
+          "low": -15,
+          "high": 22
+        }
+      },
+      {
+        "home_team": "BAL",
+        "away_team": "NO",
+        "neutral": false,
+        "allow_ties": true,
+        "home_score": 26.477575269700104,
+        "away_score": 19.53735693144904,
+        "score_prediction": {
+          "home_score": 27,
+          "away_score": 20,
+          "probability": 0.005796526626284873,
+          "method": "minimum_expected_absolute_error"
+        },
+        "top_scorelines": [
+          {
+            "home_score": 34,
+            "away_score": 10,
+            "probability": 0.007635966220950967
+          },
+          {
+            "home_score": 31,
+            "away_score": 10,
+            "probability": 0.005895514731129452
+          },
+          {
+            "home_score": 27,
+            "away_score": 20,
+            "probability": 0.005796526626284873
+          }
+        ],
+        "margin": 6.940218338251064,
+        "total": 46.01493220114914,
+        "favorite": "BAL",
+        "home_games": 56,
+        "away_games": 52,
+        "home_current_season_games": 1,
+        "away_current_season_games": 1,
+        "low_data": false,
+        "home_win_probability": 0.6724540681805438,
+        "away_win_probability": 0.30113256262784893,
+        "tie_probability": 0.026413369191607274,
+        "margin_stddev": 14.302570340316551,
+        "margin_interval": {
+          "coverage": 0.8,
+          "low": -11,
+          "high": 25
+        }
+      },
+      {
+        "home_team": "CHI",
+        "away_team": "MIN",
+        "neutral": false,
+        "allow_ties": true,
+        "home_score": 25.335112074908857,
+        "away_score": 22.483065227398452,
+        "score_prediction": {
+          "home_score": 25,
+          "away_score": 22,
+          "probability": 0.0003696385285392198,
+          "method": "minimum_expected_absolute_error"
+        },
+        "top_scorelines": [
+          {
+            "home_score": 27,
+            "away_score": 20,
+            "probability": 0.005562396726061751
+          },
+          {
+            "home_score": 27,
+            "away_score": 24,
+            "probability": 0.005120666544386188
+          },
+          {
+            "home_score": 34,
+            "away_score": 10,
+            "probability": 0.005048958814744229
+          }
+        ],
+        "margin": 2.8520468475104046,
+        "total": 47.818177302307305,
+        "favorite": "CHI",
+        "home_games": 54,
+        "away_games": 53,
+        "home_current_season_games": 1,
+        "away_current_season_games": 1,
+        "low_data": false,
+        "home_win_probability": 0.563463065035323,
+        "away_win_probability": 0.40775181415494804,
+        "tie_probability": 0.028785120809729375,
+        "margin_stddev": 14.462693932550438,
+        "margin_interval": {
+          "coverage": 0.8,
+          "low": -16,
+          "high": 21
+        }
+      },
+      {
+        "home_team": "HOU",
+        "away_team": "CIN",
+        "neutral": false,
+        "allow_ties": true,
+        "home_score": 28.237336664333714,
+        "away_score": 21.947240107121658,
+        "score_prediction": {
+          "home_score": 28,
+          "away_score": 22,
+          "probability": 0.0011125956447474653,
+          "method": "minimum_expected_absolute_error"
+        },
+        "top_scorelines": [
+          {
+            "home_score": 34,
+            "away_score": 10,
+            "probability": 0.006522188295476716
+          },
+          {
+            "home_score": 27,
+            "away_score": 20,
+            "probability": 0.00566427894049035
+          },
+          {
+            "home_score": 27,
+            "away_score": 24,
+            "probability": 0.005100910735296515
+          }
+        ],
+        "margin": 6.290096557212056,
+        "total": 50.18457677145537,
+        "favorite": "HOU",
+        "home_games": 58,
+        "away_games": 52,
+        "home_current_season_games": 1,
+        "away_current_season_games": 1,
+        "low_data": false,
+        "home_win_probability": 0.652376583994104,
+        "away_win_probability": 0.32106393770215147,
+        "tie_probability": 0.026559478303744326,
+        "margin_stddev": 14.625646853046355,
+        "margin_interval": {
+          "coverage": 0.8,
+          "low": -12,
+          "high": 25
+        }
+      },
+      {
+        "home_team": "NE",
+        "away_team": "PIT",
+        "neutral": false,
+        "allow_ties": true,
+        "home_score": 22.96562407759656,
+        "away_score": 17.056166163813593,
+        "score_prediction": {
+          "home_score": 23,
+          "away_score": 17,
+          "probability": 0.0022115649163483306,
+          "method": "minimum_expected_absolute_error"
+        },
+        "top_scorelines": [
+          {
+            "home_score": 20,
+            "away_score": 10,
+            "probability": 0.007692852092953848
+          },
+          {
+            "home_score": 34,
+            "away_score": 10,
+            "probability": 0.007017189275587235
+          },
+          {
+            "home_score": 27,
+            "away_score": 10,
+            "probability": 0.00669066357280069
+          }
+        ],
+        "margin": 5.9094579137829655,
+        "total": 40.02179024141015,
+        "favorite": "NE",
+        "home_games": 56,
+        "away_games": 55,
+        "home_current_season_games": 1,
+        "away_current_season_games": 1,
+        "low_data": false,
+        "home_win_probability": 0.6507811781754345,
+        "away_win_probability": 0.3199675999508584,
+        "tie_probability": 0.029251221873707288,
+        "margin_stddev": 13.806346876148567,
+        "margin_interval": {
+          "coverage": 0.8,
+          "low": -12,
+          "high": 24
+        }
+      },
+      {
+        "home_team": "NYJ",
+        "away_team": "GB",
+        "neutral": false,
+        "allow_ties": true,
+        "home_score": 19.44172977628319,
+        "away_score": 25.614114290887027,
+        "score_prediction": {
+          "home_score": 20,
+          "away_score": 26,
+          "probability": 0.0025838904040314556,
+          "method": "minimum_expected_absolute_error"
+        },
+        "top_scorelines": [
+          {
+            "home_score": 10,
+            "away_score": 34,
+            "probability": 0.007236838540720138
+          },
+          {
+            "home_score": 10,
+            "away_score": 27,
+            "probability": 0.005767335365076799
+          },
+          {
+            "home_score": 20,
+            "away_score": 27,
+            "probability": 0.00574964968734053
+          }
+        ],
+        "margin": -6.172384514603838,
+        "total": 45.05584406717021,
+        "favorite": "GB",
+        "home_games": 52,
+        "away_games": 56,
+        "home_current_season_games": 1,
+        "away_current_season_games": 1,
+        "low_data": false,
+        "home_win_probability": 0.3191438068416641,
+        "away_win_probability": 0.6536057369061756,
+        "tie_probability": 0.02725045625215995,
+        "margin_stddev": 14.236628415262816,
+        "margin_interval": {
+          "coverage": 0.8,
+          "low": -24,
+          "high": 12
+        }
+      },
+      {
+        "home_team": "TB",
+        "away_team": "CLE",
+        "neutral": false,
+        "allow_ties": true,
+        "home_score": 24.540869685900525,
+        "away_score": 17.797395568235117,
+        "score_prediction": {
+          "home_score": 24,
+          "away_score": 17,
+          "probability": 0.003105989496567224,
+          "method": "minimum_expected_absolute_error"
+        },
+        "top_scorelines": [
+          {
+            "home_score": 34,
+            "away_score": 10,
+            "probability": 0.007708160468868277
+          },
+          {
+            "home_score": 20,
+            "away_score": 10,
+            "probability": 0.006811130256133632
+          },
+          {
+            "home_score": 27,
+            "away_score": 10,
+            "probability": 0.006598251612093001
+          }
+        ],
+        "margin": 6.743474117665407,
+        "total": 42.33826525413564,
+        "favorite": "TB",
+        "home_games": 55,
+        "away_games": 53,
+        "home_current_season_games": 1,
+        "away_current_season_games": 1,
+        "low_data": false,
+        "home_win_probability": 0.6708094857526888,
+        "away_win_probability": 0.3016733680803866,
+        "tie_probability": 0.027517146166924255,
+        "margin_stddev": 13.998262097823076,
+        "margin_interval": {
+          "coverage": 0.8,
+          "low": -11,
+          "high": 25
+        }
+      },
+      {
+        "home_team": "TEN",
+        "away_team": "PHI",
+        "neutral": false,
+        "allow_ties": true,
+        "home_score": 16.143620011964344,
+        "away_score": 25.462007897756152,
+        "score_prediction": {
+          "home_score": 16,
+          "away_score": 26,
+          "probability": 0.0011618412987807831,
+          "method": "minimum_expected_absolute_error"
+        },
+        "top_scorelines": [
+          {
+            "home_score": 10,
+            "away_score": 34,
+            "probability": 0.009502642804410866
+          },
+          {
+            "home_score": 10,
+            "away_score": 27,
+            "probability": 0.007660736129661354
+          },
+          {
+            "home_score": 10,
+            "away_score": 31,
+            "probability": 0.007551120144484555
+          }
+        ],
+        "margin": -9.318387885791807,
+        "total": 41.605627909720496,
+        "favorite": "PHI",
+        "home_games": 52,
+        "away_games": 58,
+        "home_current_season_games": 1,
+        "away_current_season_games": 1,
+        "low_data": false,
+        "home_win_probability": 0.23896421711646118,
+        "away_win_probability": 0.7359858172624647,
+        "tie_probability": 0.025049965621074616,
+        "margin_stddev": 13.850885565505456,
+        "margin_interval": {
+          "coverage": 0.8,
+          "low": -27,
+          "high": 8
+        }
+      },
+      {
+        "home_team": "DEN",
+        "away_team": "JAX",
+        "neutral": false,
+        "allow_ties": true,
+        "home_score": 22.73013544014357,
+        "away_score": 21.759996133890354,
+        "score_prediction": {
+          "home_score": 23,
+          "away_score": 22,
+          "probability": 0.0011184984343872867,
+          "method": "minimum_expected_absolute_error"
+        },
+        "top_scorelines": [
+          {
+            "home_score": 27,
+            "away_score": 20,
+            "probability": 0.005244252204166904
+          },
+          {
+            "home_score": 20,
+            "away_score": 27,
+            "probability": 0.004904374143733022
+          },
+          {
+            "home_score": 20,
+            "away_score": 13,
+            "probability": 0.004834808270341959
+          }
+        ],
+        "margin": 0.9701393062532162,
+        "total": 44.490131574033924,
+        "favorite": "DEN",
+        "home_games": 55,
+        "away_games": 53,
+        "home_current_season_games": 1,
+        "away_current_season_games": 1,
+        "low_data": false,
+        "home_win_probability": 0.5121308535684868,
+        "away_win_probability": 0.4579036403155639,
+        "tie_probability": 0.029965506115949864,
+        "margin_stddev": 14.236765195189534,
+        "margin_interval": {
+          "coverage": 0.8,
+          "low": -17,
+          "high": 20
+        }
+      },
+      {
+        "home_team": "LAC",
+        "away_team": "LV",
+        "neutral": false,
+        "allow_ties": true,
+        "home_score": 22.561040193498524,
+        "away_score": 16.42903365942664,
+        "score_prediction": {
+          "home_score": 23,
+          "away_score": 16,
+          "probability": 0.0018963405144167749,
+          "method": "minimum_expected_absolute_error"
+        },
+        "top_scorelines": [
+          {
+            "home_score": 20,
+            "away_score": 10,
+            "probability": 0.008179398270725606
+          },
+          {
+            "home_score": 34,
+            "away_score": 10,
+            "probability": 0.007042033692691823
+          },
+          {
+            "home_score": 27,
+            "away_score": 10,
+            "probability": 0.006911202737149512
+          }
+        ],
+        "margin": 6.132006534071884,
+        "total": 38.990073852925164,
+        "favorite": "LAC",
+        "home_games": 54,
+        "away_games": 52,
+        "home_current_season_games": 1,
+        "away_current_season_games": 1,
+        "low_data": false,
+        "home_win_probability": 0.6576795467685337,
+        "away_win_probability": 0.31270466050542395,
+        "tie_probability": 0.02961579272604212,
+        "margin_stddev": 13.698320276528568,
+        "margin_interval": {
+          "coverage": 0.8,
+          "low": -11,
+          "high": 24
+        }
+      },
+      {
+        "home_team": "ARI",
+        "away_team": "SEA",
+        "neutral": false,
+        "allow_ties": true,
+        "home_score": 18.315548891708374,
+        "away_score": 26.891297279117797,
+        "score_prediction": {
+          "home_score": 18,
+          "away_score": 27,
+          "probability": 0.0012408266179983315,
+          "method": "minimum_expected_absolute_error"
+        },
+        "top_scorelines": [
+          {
+            "home_score": 10,
+            "away_score": 34,
+            "probability": 0.008820750978899092
+          },
+          {
+            "home_score": 10,
+            "away_score": 31,
+            "probability": 0.006733736623801348
+          },
+          {
+            "home_score": 10,
+            "away_score": 27,
+            "probability": 0.006475799106548372
+          }
+        ],
+        "margin": -8.575748387409423,
+        "total": 45.20684617082617,
+        "favorite": "SEA",
+        "home_games": 52,
+        "away_games": 55,
+        "home_current_season_games": 1,
+        "away_current_season_games": 1,
+        "low_data": false,
+        "home_win_probability": 0.26132819327036166,
+        "away_win_probability": 0.7137008807386338,
+        "tie_probability": 0.024970925991004898,
+        "margin_stddev": 14.2082740295484,
+        "margin_interval": {
+          "coverage": 0.8,
+          "low": -27,
+          "high": 10
+        }
+      },
+      {
+        "home_team": "DAL",
+        "away_team": "WAS",
+        "neutral": false,
+        "allow_ties": true,
+        "home_score": 27.487653873502925,
+        "away_score": 26.880529979061862,
+        "score_prediction": {
+          "home_score": 27,
+          "away_score": 27,
+          "probability": 0.003974743686062169,
+          "method": "minimum_expected_absolute_error"
+        },
+        "top_scorelines": [
+          {
+            "home_score": 27,
+            "away_score": 24,
+            "probability": 0.005046378167093546
+          },
+          {
+            "home_score": 31,
+            "away_score": 27,
+            "probability": 0.005002360322263503
+          },
+          {
+            "home_score": 24,
+            "away_score": 27,
+            "probability": 0.004964408850857605
+          }
+        ],
+        "margin": 0.6071238944410631,
+        "total": 54.36818385256478,
+        "favorite": "DAL",
+        "home_games": 53,
+        "away_games": 55,
+        "home_current_season_games": 1,
+        "away_current_season_games": 1,
+        "low_data": false,
+        "home_win_probability": 0.5015433353245037,
+        "away_win_probability": 0.4693441318277966,
+        "tie_probability": 0.029112532847699914,
+        "margin_stddev": 14.914584380495011,
+        "margin_interval": {
+          "coverage": 0.8,
+          "low": -18,
+          "high": 20
+        }
+      },
+      {
+        "home_team": "SF",
+        "away_team": "MIA",
+        "neutral": false,
+        "allow_ties": true,
+        "home_score": 26.757251869343207,
+        "away_score": 18.191746358938882,
+        "score_prediction": {
+          "home_score": 27,
+          "away_score": 18,
+          "probability": 0.0012409868904571435,
+          "method": "minimum_expected_absolute_error"
+        },
+        "top_scorelines": [
+          {
+            "home_score": 34,
+            "away_score": 10,
+            "probability": 0.008842173470187058
+          },
+          {
+            "home_score": 31,
+            "away_score": 10,
+            "probability": 0.006774880658149362
+          },
+          {
+            "home_score": 27,
+            "away_score": 10,
+            "probability": 0.006547290789702932
+          }
+        ],
+        "margin": 8.565505510404325,
+        "total": 44.94899822828209,
+        "favorite": "SF",
+        "home_games": 57,
+        "away_games": 53,
+        "home_current_season_games": 1,
+        "away_current_season_games": 1,
+        "low_data": false,
+        "home_win_probability": 0.7137518337005816,
+        "away_win_probability": 0.261219724811932,
+        "tie_probability": 0.02502844148748683,
+        "margin_stddev": 14.185912120060847,
+        "margin_interval": {
+          "coverage": 0.8,
+          "low": -10,
+          "high": 27
+        }
+      },
+      {
+        "home_team": "KC",
+        "away_team": "IND",
+        "neutral": false,
+        "allow_ties": true,
+        "home_score": 26.935183492818588,
+        "away_score": 20.612451138895548,
+        "score_prediction": {
+          "home_score": 27,
+          "away_score": 20,
+          "probability": 0.005798928276292339,
+          "method": "minimum_expected_absolute_error"
+        },
+        "top_scorelines": [
+          {
+            "home_score": 34,
+            "away_score": 10,
+            "probability": 0.007036250239040439
+          },
+          {
+            "home_score": 27,
+            "away_score": 20,
+            "probability": 0.005798928276292339
+          },
+          {
+            "home_score": 31,
+            "away_score": 10,
+            "probability": 0.005365796159479463
+          }
+        ],
+        "margin": 6.3227323539230404,
+        "total": 47.54763463171413,
+        "favorite": "KC",
+        "home_games": 59,
+        "away_games": 52,
+        "home_current_season_games": 1,
+        "away_current_season_games": 1,
+        "low_data": false,
+        "home_win_probability": 0.6554181875050273,
+        "away_win_probability": 0.31786162536328766,
+        "tie_probability": 0.026720187131685273,
+        "margin_stddev": 14.427898556024585,
+        "margin_interval": {
+          "coverage": 0.8,
+          "low": -12,
+          "high": 25
+        }
+      },
+      {
+        "home_team": "LA",
+        "away_team": "NYG",
+        "neutral": false,
+        "allow_ties": true,
+        "home_score": 28.29505454212137,
+        "away_score": 19.258568335891383,
+        "score_prediction": {
+          "home_score": 28,
+          "away_score": 20,
+          "probability": 0.0028082294168106444,
+          "method": "minimum_expected_absolute_error"
+        },
+        "top_scorelines": [
+          {
+            "home_score": 34,
+            "away_score": 10,
+            "probability": 0.008747877875412332
+          },
+          {
+            "home_score": 31,
+            "away_score": 10,
+            "probability": 0.006431987097457321
+          },
+          {
+            "home_score": 27,
+            "away_score": 10,
+            "probability": 0.005883533870637119
+          }
+        ],
+        "margin": 9.036486206229988,
+        "total": 47.55362287801275,
+        "favorite": "LA",
+        "home_games": 58,
+        "away_games": 52,
+        "home_current_season_games": 1,
+        "away_current_season_games": 1,
+        "low_data": false,
+        "home_win_probability": 0.721887088140238,
+        "away_win_probability": 0.25392349189865654,
+        "tie_probability": 0.024189419961105737,
+        "margin_stddev": 14.402745609715259,
+        "margin_interval": {
+          "coverage": 0.8,
+          "low": -9,
+          "high": 28
+        }
+      },
+      {
+        "home_team": "GB",
+        "away_team": "ATL",
+        "neutral": false,
+        "allow_ties": true,
+        "home_score": 25.306966623281518,
+        "away_score": 19.41765593048435,
+        "score_prediction": {
+          "home_score": 25,
+          "away_score": 20,
+          "probability": 0.0007900698235389093,
+          "method": "minimum_expected_absolute_error"
+        },
+        "top_scorelines": [
+          {
+            "home_score": 34,
+            "away_score": 10,
+            "probability": 0.007079370094521571
+          },
+          {
+            "home_score": 27,
+            "away_score": 10,
+            "probability": 0.005756171136163683
+          },
+          {
+            "home_score": 27,
+            "away_score": 20,
+            "probability": 0.005723478220500953
+          }
+        ],
+        "margin": 5.889310692797167,
+        "total": 44.72462255376587,
+        "favorite": "GB",
+        "home_games": 56,
+        "away_games": 52,
+        "home_current_season_games": 1,
+        "away_current_season_games": 1,
+        "low_data": false,
+        "home_win_probability": 0.6464855534965945,
+        "away_win_probability": 0.32596166212916683,
+        "tie_probability": 0.0275527843742383,
+        "margin_stddev": 14.214338069357991,
+        "margin_interval": {
+          "coverage": 0.8,
+          "low": -13,
+          "high": 24
+        }
+      }
+    ],
+    "upcoming_34_10": 0,
+    "upcoming_unique_scorelines": 15,
+    "upcoming_most_repeated": 2
+  },
+  "baseline_commit": "a8bd36b",
+  "snapshot_source": "https://github.com/nflverse/nflverse-data/releases/download/schedules/games.parquet",
+  "simulation": {
+    "synthetic": true,
+    "seeds": 48,
+    "seasons_per_seed": 8,
+    "simulated_games": 104832,
+    "forecasts_checked": 4608,
+    "scenarios": {
+      "balanced": 8,
+      "unequal": 8,
+      "drifting": 8,
+      "volatile": 8,
+      "low_scoring": 8,
+      "high_scoring": 8
+    },
+    "failures": [],
+    "seconds": 245.098,
+    "interpretation": "Robustness checks on simulated data, not measured real-game accuracy."
+  },
+  "checks": {
+    "python_tests": 51,
+    "frontend_tests": 4,
+    "lint": "passed",
+    "build": "passed",
+    "browser": "desktop, 390px and 320px; HOU-CIN 28-22; no errors or horizontal overflow"
+  }
+}

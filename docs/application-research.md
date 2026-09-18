@@ -1,5 +1,9 @@
 # Application research and improvements
 
+This report records the v3 application review. The subsequent
+[v4 score and recency investigation](forecast-recency-investigation.md) corrects
+the repetitive modal-score headline and updates recency weighting.
+
 This review examined forecasting, evaluation, play-by-play aggregation, ranking
 consistency, browser request lifecycles, repeated content, and deployment checks.
 Changes were evaluated locally; nothing was deployed or written to the live SQL

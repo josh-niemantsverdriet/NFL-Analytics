@@ -36,6 +36,9 @@ class ForecastSimulationTests(unittest.TestCase):
                 with self.subTest(home=home, away=away, through=model.trained_through):
                     neutral, allow_ties = index % 2 == 0, index % 3 != 0
                     forecast = _forecast(model, home, away, neutral, allow_ties)
+                    self.assertEqual(forecast["score_prediction"]["method"], "minimum_expected_absolute_error")
+                    if not allow_ties:
+                        self.assertNotEqual(forecast["score_prediction"]["home_score"], forecast["score_prediction"]["away_score"])
                     json.dumps(forecast, allow_nan=False)
                     chances = [forecast[key] for key in ("home_win_probability", "away_win_probability", "tie_probability")]
                     self.assertAlmostEqual(sum(chances), 1.0, places=10)
@@ -86,6 +89,8 @@ class ForecastSimulationTests(unittest.TestCase):
             self.assertGreaterEqual(selection["games"], 20)
             self.assertLess(selection["training_through"], selection["from_date"])
             self.assertLess(selection["through_date"], fold["from_date"])
+            self.assertIn(selection["selected_half_life_days"], (120, 180, 270))
+            self.assertEqual(len(selection["recency_candidates"]), 3)
         json.dumps(model.metadata, allow_nan=False)
 
 

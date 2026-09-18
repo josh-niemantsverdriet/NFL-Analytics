@@ -35,6 +35,41 @@ def game_history(count=100):
 
 
 class ForecastModelTests(unittest.TestCase):
+    def test_recency_weights_halve_by_age_and_keep_ridge_weight_scale_stable(self):
+        from src.forecast_model import _clean_games, _fit_base, _recency_weights
+
+        cleaned = _clean_games(game_history())[0]
+        cleaned[0]["gameday"] = cleaned[-1]["gameday"] - timedelta(days=180)
+        weights = _recency_weights(cleaned, 180)
+        self.assertAlmostEqual(weights[0] / weights[-1], 0.5)
+        from sklearn.linear_model import Ridge
+        original_fit = Ridge.fit
+        observed = []
+        def capture(regression, features, scores, **kwargs):
+            observed.append(kwargs["sample_weight"])
+            return original_fit(regression, features, scores, **kwargs)
+        with patch.object(Ridge, "fit", capture):
+            for half_life in (120, 180, 270):
+                fitted = _fit_base(cleaned, half_life_days=half_life)
+                self.assertAlmostEqual(sum(row["weight_share"] for row in fitted.season_weights), 1)
+        for weights in observed:
+            self.assertAlmostEqual(float(np.mean(weights)), 1)
+
+    def test_more_recent_results_move_a_changing_team_rating_further(self):
+        from src.forecast_model import _clean_games, _fit_base
+
+        history = game_history(120)
+        for index, game in enumerate(history):
+            game["gameday"] = (date(2024, 1, 1) + timedelta(days=index * 5)).isoformat()
+            # BUF changes from struggling to strong while opponent history stays fixed.
+            for side in ("home", "away"):
+                if game[f"{side}_team"] == "BUF":
+                    game[f"{side}_score"] += -12 if index < 80 else 12
+        clean = _clean_games(history)[0]
+        slower = _fit_base(clean, half_life_days=365).scores("BUF", "KC", True)[0]
+        faster = _fit_base(clean, half_life_days=120).scores("BUF", "KC", True)[0]
+        self.assertGreater(faster, slower + 2)
+
     def test_neutral_predictions_are_symmetric_and_json_serializable(self):
         model = build_forecast_model(game_history())
         forward = model.predict("BUF", "NYJ", neutral=True)
@@ -196,6 +231,7 @@ class ForecastModelTests(unittest.TestCase):
         fitted.team_indices = {team: index for index, team in enumerate(["BUF", "KC", "NYJ", "MIA"])}
         fitted.trained_through = cleaned[59]["gameday"]
         fitted.game_counts = {team: 30 for team in fitted.team_indices}
+        fitted.current_season_counts = {team: 1 for team in fitted.team_indices}
         fitted.prior_selection = None
         fitted.margin_stddev = 10.0
         fitted.scores.return_value = (24.5, 20.5)
@@ -208,6 +244,10 @@ class ForecastModelTests(unittest.TestCase):
         fitted.score_distribution.top_scorelines.return_value = [
             {"home_score": 27, "away_score": 20, "probability": 0.2},
         ]
+        fitted.score_distribution.point_scoreline.return_value = {
+            "home_score": 24, "away_score": 21, "probability": 0.1,
+            "method": "minimum_expected_absolute_error",
+        }
         fitted.score_distribution.summarize.return_value = {
             "home_win_probability": 0.6, "away_win_probability": 0.39, "tie_probability": 0.01,
             "margin_stddev": 10.0, "margin_interval": {"coverage": 0.8, "low": -10, "high": 15},
@@ -219,7 +259,8 @@ class ForecastModelTests(unittest.TestCase):
         self.assertAlmostEqual(evaluation["score_mae"], 3.5)
         self.assertAlmostEqual(evaluation["score_rmse"], np.sqrt(17.25))
         self.assertAlmostEqual(evaluation["predicted_score_mae"], 3.5)
-        self.assertEqual(evaluation["exact_score_accuracy"], 0.5)
+        self.assertEqual(evaluation["exact_score_accuracy"], 0.0)
+        self.assertEqual(evaluation["modal_exact_score_accuracy"], 0.5)
         self.assertEqual(evaluation["rounded_score_accuracy"], 0.0)
         self.assertAlmostEqual(evaluation["scoreline_log_loss"], -0.5 * np.log(0.02))
         self.assertAlmostEqual(evaluation["baseline_scoreline_log_loss"], -np.log(0.1))

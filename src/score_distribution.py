@@ -152,6 +152,34 @@ class ScoreDistribution:
         }
 
     @staticmethod
+    def point_scoreline(probabilities, home_team, away_team):
+        """Bayes point forecast under per-team absolute score error.
+
+        Marginal medians minimize this loss. Search the joint support so the
+        answer also respects excluded scores and postseason no-tie rules.
+        Exact-score probability breaks equal-risk ties; franchise ordering
+        makes the last tie-break invariant to reversing a neutral matchup.
+        """
+        reverse = home_team > away_team
+        mass = probabilities.T if reverse else probabilities
+        points = np.arange(len(mass))
+        distances = np.abs(points[:, None] - points[None, :])
+        home_risk = np.sum(distances * mass.sum(axis=1)[None, :], axis=1)
+        away_risk = np.sum(distances * mass.sum(axis=0)[None, :], axis=1)
+        risk = home_risk[:, None] + away_risk[None, :]
+        supported = mass > 0
+        minimum = np.min(risk[supported])
+        candidates = np.flatnonzero((supported & (risk <= minimum + 1e-10)).ravel())
+        index = candidates[np.argmax(mass.ravel()[candidates])]
+        first, second = np.unravel_index(index, mass.shape)
+        home, away = (second, first) if reverse else (first, second)
+        return {
+            "home_score": int(home), "away_score": int(away),
+            "probability": float(probabilities[home, away]),
+            "method": "minimum_expected_absolute_error",
+        }
+
+    @staticmethod
     def top_scorelines(probabilities, home_team, away_team, count=3):
         """Rank joint modes, breaking equal probabilities by franchise code.
 

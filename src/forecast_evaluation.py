@@ -1,5 +1,7 @@
 """Expanding-window evaluation with whole dates kept on one side of each split."""
 
+from collections import Counter
+
 import numpy as np
 
 
@@ -47,8 +49,10 @@ def evaluate(games, fit, forecast):
             mass = model.score_distribution.probabilities(*means, allow_ties=game["allow_ties"])
             prediction = forecast(model, home, away, game["neutral"], game["allow_ties"], means, mass)
             actual = np.array([game["home_score"], game["away_score"]], dtype=int)
-            mode = prediction["score_prediction"]
-            predicted_scores = np.array([mode["home_score"], mode["away_score"]])
+            point = prediction["score_prediction"]
+            predicted_scores = np.array([point["home_score"], point["away_score"]])
+            mode = prediction["top_scorelines"][0]
+            modal_scores = np.array([mode["home_score"], mode["away_score"]])
             actual_margin = int(actual[0] - actual[1])
             interval = prediction["margin_interval"]
             p_home, p_away = prediction["home_win_probability"], prediction["away_win_probability"]
@@ -66,6 +70,9 @@ def evaluate(games, fit, forecast):
                 "score_mse": float(np.mean((np.array(means) - actual) ** 2)),
                 "baseline_score_mae": float(np.mean(np.abs(league_means - actual))),
                 "predicted_score_mae": float(np.mean(np.abs(predicted_scores - actual))),
+                "modal_score_mae": float(np.mean(np.abs(modal_scores - actual))),
+                "modal_exact_score_accuracy": float(np.array_equal(modal_scores, actual)),
+                "projected_pair": tuple(predicted_scores.tolist()),
                 "exact_score_accuracy": float(np.array_equal(predicted_scores, actual)),
                 "rounded_score_accuracy": float(np.array_equal(np.floor(np.array(means) + 0.5), actual)),
                 "scoreline_log_loss": float(-np.log(max(observed_p, LOG_PROBABILITY_FLOOR))),
@@ -95,6 +102,7 @@ def evaluate(games, fit, forecast):
         "score_mae", "baseline_score_mae", "predicted_score_mae", "exact_score_accuracy",
         "rounded_score_accuracy", "scoreline_log_loss", "baseline_scoreline_log_loss",
         "margin_mae", "margin_interval_coverage", "margin_interval_width", "outcome_brier_score",
+        "modal_score_mae", "modal_exact_score_accuracy",
     )
     result = {name: _mean([row[name] for row in records]) for name in metric_names}
     decisive = [row for row in records if row["outcome"] is not None]
@@ -129,4 +137,7 @@ def evaluate(games, fit, forecast):
         })
     # Count is explicit: bin summaries are diagnostics, not a fitted calibrator.
     result["calibration_games"] = len(probabilities)
+    projected = Counter(r["projected_pair"] for r in records)
+    result["projected_unique_scorelines"] = len(projected)
+    result["most_common_projected_score_share"] = max(projected.values()) / len(records) if records else None
     return result

@@ -3,11 +3,13 @@ import type { FormEvent } from "react";
 import { Link } from "react-router";
 import "./GameForecast.css";
 import { fetchData } from "./api";
+import { scorePresentation } from "./forecastPresentation";
 
 interface ScorePrediction {
   home_score: number;
   away_score: number;
   probability: number;
+  method?: string;
 }
 
 interface Forecast {
@@ -28,6 +30,8 @@ interface Forecast {
   margin_interval: { low: number; high: number; coverage: number };
   home_games: number;
   away_games: number;
+  home_current_season_games?: number;
+  away_current_season_games?: number;
 }
 
 interface ModelInfo {
@@ -35,6 +39,10 @@ interface ModelInfo {
   training_games: number;
   trained_through: string;
   history_seasons: number[];
+  assumptions?: {
+    recency_half_life_days?: number;
+    history_weight_by_season?: { season: number; games: number; weight_share: number }[];
+  };
   evaluation: {
     games: number;
     method?: string;
@@ -120,15 +128,12 @@ function Scoreboard({ result, game }: { result: ForecastResponse; game?: Upcomin
   const forecast = result.forecast;
   const tieProbability = forecast.tie_probability ?? 0;
   const scorePrediction = forecast.score_prediction;
-  const alternatives = scorePrediction
-    ? (forecast.top_scorelines ?? []).filter((score) =>
-        score.home_score !== scorePrediction.home_score || score.away_score !== scorePrediction.away_score,
-      ).slice(0, 2)
-    : [];
+  const presentation = scorePresentation(scorePrediction, forecast.top_scorelines);
+  const alternatives = presentation.alternatives;
   return (
     <section className="forecast-board" aria-labelledby="forecast-result-title">
       <div className="forecast-board-top">
-        <h2 id="forecast-result-title">{scorePrediction ? "Predicted final score" : "Expected average score"}</h2>
+        <h2 id="forecast-result-title">{presentation.heading}</h2>
         <span>
           {game ? `Week ${game.week} · ${dateLabel(game.date)}` : "Your matchup"}
           {forecast.neutral ? " · Neutral field" : ""}
@@ -141,7 +146,7 @@ function Scoreboard({ result, game }: { result: ForecastResponse; game?: Upcomin
           <h3>{forecast.away_team}</h3>
           <strong className="forecast-score">{scorePrediction ? scorePrediction.away_score : forecast.away_score.toFixed(1)}</strong>
           {scorePrediction && <span className="forecast-team-average">Expected average: {forecast.away_score.toFixed(1)}</span>}
-          <span className="forecast-team-sample">{forecast.away_games} games of team history</span>
+          <span className="forecast-team-sample">{forecast.away_current_season_games != null && `${forecast.away_current_season_games} this season · `}{forecast.away_games} total games</span>
         </div>
         <div className="forecast-score-divider" aria-hidden="true">
           <span>{scorePrediction ? "PREDICTED" : "EXPECTED"}</span>
@@ -153,14 +158,14 @@ function Scoreboard({ result, game }: { result: ForecastResponse; game?: Upcomin
           <h3>{forecast.home_team}</h3>
           <strong className="forecast-score">{scorePrediction ? scorePrediction.home_score : forecast.home_score.toFixed(1)}</strong>
           {scorePrediction && <span className="forecast-team-average">Expected average: {forecast.home_score.toFixed(1)}</span>}
-          <span className="forecast-team-sample">{forecast.home_games} games of team history</span>
+          <span className="forecast-team-sample">{forecast.home_current_season_games != null && `${forecast.home_current_season_games} this season · `}{forecast.home_games} total games</span>
         </div>
       </div>
 
       {scorePrediction && <div className="forecast-scorelines">
         <p>Model probability of this exact score: <strong>{percent(scorePrediction.probability, 2)}</strong></p>
         {alternatives.length > 0 && <>
-          <span className="forecast-scorelines-label">Next most likely scores</span>
+          <span className="forecast-scorelines-label">{presentation.alternativesHeading}</span>
           <ul>
             {alternatives.map((score) => <li key={`${score.away_score}-${score.home_score}`}>
               <span><span className="forecast-away-color">{forecast.away_team} {score.away_score}</span> <span aria-hidden="true">–</span> <span className="forecast-home-color">{forecast.home_team} {score.home_score}</span></span>
@@ -201,9 +206,8 @@ function Scoreboard({ result, game }: { result: ForecastResponse; game?: Upcomin
       </div>
       {forecast.low_data && <p className="forecast-board-note" role="status">Limited history: at least one team has fewer than eight completed games.</p>}
       <p className="forecast-board-note">
-        {scorePrediction
-          ? "The predicted final score is the model’s most likely single result; many other outcomes are possible. Expected averages summarize the full score distribution."
-          : "Scores are expected averages."}
+        {presentation.explanation}
+        {presentation.tiedProjection && " A tied projection indicates a close matchup; see the separate tie probability."}
         {" "}Scores, win chances and margin ranges come from one model; they remain estimates.
       </p>
     </section>
@@ -221,6 +225,14 @@ function ModelDetails({ model, cutoff }: { model: ModelInfo; cutoff: string }) {
         <p>{model.method}</p>
         <p>Trained on {model.training_games.toLocaleString()} games from {model.history_seasons.join(", ")},
           through {dateLabel(model.trained_through)}. Results on or after {dateLabel(cutoff)} are excluded.</p>
+        {model.assumptions?.history_weight_by_season && <>
+          <h3>How much does recent form count?</h3>
+          <p>Each game loses half its weight every {model.assumptions.recency_half_life_days} days.
+            This setting is selected using earlier results. A small current-season sample is balanced with prior seasons.</p>
+          <p className="forecast-small">Share of league training weight: {model.assumptions.history_weight_by_season.map(
+            (row) => `${row.season}: ${percent(row.weight_share)}`,
+          ).join(" · ")}.</p>
+        </>}
         <h3>Historical performance</h3>
         {evaluation.games > 0 ? <>
           <p>{evaluation.games.toLocaleString()} games from {dateLabel(evaluation.from_date)} to {dateLabel(evaluation.through_date)}.
@@ -230,6 +242,7 @@ function ModelDetails({ model, cutoff }: { model: ModelInfo; cutoff: string }) {
             {" "}Current forecasts use all completed history before the cutoff.</p>
           <dl className="forecast-evaluation">
             <div><dt>Expected points error per team</dt><dd>{pointError(evaluation.score_mae)}</dd></div>
+            {evaluation.predicted_score_mae != null && <div><dt>Projected score error per team</dt><dd>{pointError(evaluation.predicted_score_mae)}</dd></div>}
             {evaluation.baseline_score_mae != null && <div><dt>League-average points error</dt><dd>{pointError(evaluation.baseline_score_mae)}</dd></div>}
             <div><dt>Correct winner</dt><dd>{percent(evaluation.winner_accuracy)}</dd></div>
             <div><dt>Always choosing home</dt><dd>{percent(evaluation.home_baseline_accuracy)}</dd></div>

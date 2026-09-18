@@ -10,13 +10,17 @@ React/TypeScript dashboards and an Azure Functions API using nflverse data.
 
 ## Forecast methodology
 
-The `ridge-joint-score-v3` model fits recency-weighted offense and defense ratings,
+The `ridge-joint-score-v4` model fits recency-weighted offense and defense ratings,
 with a shared home-field advantage and regularized team deviations. A smoothed
 joint distribution of final scores is exponentially tilted to match expected
 points. Scorelines, win/loss/tie probabilities, and margin intervals all come
-from that distribution. Scheduled postseason games exclude ties.
+from that distribution. The headline is a central integer score minimizing
+expected point error; most likely exact outcomes are listed separately.
+Scheduled postseason games exclude ties.
 
-Smoothing is selected on an inner chronological validation sample. Four
+Recency half-life (120, 180 or 270 days) and smoothing are selected using inner
+chronological validation. Regression weights are normalized so faster decay
+does not accidentally increase regularization. Four
 expanding-window test blocks evaluate the complete procedure using only earlier
 results; the production model then refits all eligible history. Forecasts use
 current-season and three preceding seasons of public schedule results, without
@@ -26,7 +30,7 @@ to an hour.
 
 See [the algorithm and API semantics](docs/score-forecast.md),
 [research and measured tradeoffs](docs/application-research.md), and
-[recorded validation results](docs/validation-results.json).
+[the 34–10 investigation and v4 results](docs/forecast-recency-investigation.md).
 
 ## Run locally
 
@@ -91,6 +95,6 @@ until analysis/ingestion runs again.
 Send JSON with `season` and `snapshot_date` for an existing ingested snapshot,
 and supply the Function key in the `x-functions-key` header.
 
-Deploy both frontend and backend for the new tie probabilities. The backend API
+Deploy both frontend and backend for the new projected-score semantics. The backend API
 version identifies the new semantics; see the forecast documentation before
 updating other consumers.

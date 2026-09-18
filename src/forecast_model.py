@@ -22,7 +22,8 @@ from src.score_distribution import (
 )
 
 RIDGE_ALPHA = 20.0
-RECENCY_HALF_LIFE_DAYS = 365.0
+RECENCY_HALF_LIFE_DAYS = 180.0
+RECENCY_CANDIDATES = (120.0, 180.0, 270.0)
 MINIMUM_GAMES = 12
 INTERVAL_COVERAGE = 0.8
 POSTSEASON_GAME_TYPES = {"WC", "DIV", "CON", "SB"}
@@ -153,6 +154,9 @@ class _FittedScores:
     trained_through: date
     score_distribution: ScoreDistribution | None = None
     prior_selection: dict | None = None
+    recency_half_life_days: float = RECENCY_HALF_LIFE_DAYS
+    season_weights: list | None = None
+    current_season_counts: Counter | None = None
 
     @property
     def home_field_points(self):
@@ -184,7 +188,15 @@ class _FittedScores:
         return max(0.0, float(values[0])), max(0.0, float(values[1]))
 
 
-def _fit_base(games, prior_games=JOINT_PRIOR_GAMES):
+def _recency_weights(games, half_life_days):
+    latest = max(game["gameday"] for game in games)
+    return np.array([
+        0.5 ** ((latest - game["gameday"]).days / half_life_days)
+        for game in games
+    ], dtype=float)
+
+
+def _fit_base(games, prior_games=JOINT_PRIOR_GAMES, half_life_days=RECENCY_HALF_LIFE_DAYS):
     teams = sorted({
         game[side] for game in games for side in ("home_team", "away_team")
     })
@@ -192,11 +204,17 @@ def _fit_base(games, prior_games=JOINT_PRIOR_GAMES):
         game[side] for game in games for side in ("home_team", "away_team")
     )
     trained_through = max(game["gameday"] for game in games)
+    latest_season = max(game["season"] for game in games)
     fitted = _FittedScores(
         regression=Ridge(alpha=RIDGE_ALPHA, fit_intercept=True, solver="cholesky"),
         team_indices={team: index for index, team in enumerate(teams)},
         game_counts=counts,
         trained_through=trained_through,
+        recency_half_life_days=half_life_days,
+        current_season_counts=Counter(
+            game[side] for game in games if game["season"] == latest_season
+            for side in ("home_team", "away_team")
+        ),
     )
     features = np.vstack([
         fitted.features(game["home_team"], game["away_team"], game["neutral"])
@@ -205,31 +223,47 @@ def _fit_base(games, prior_games=JOINT_PRIOR_GAMES):
     scores = np.array([
         game[side] for game in games for side in ("home_score", "away_score")
     ], dtype=float)
-    game_weights = np.array([
-        0.5 ** ((trained_through - game["gameday"]).days / RECENCY_HALF_LIFE_DAYS)
-        for game in games
-    ], dtype=float)
-    fitted.regression.fit(features, scores, sample_weight=np.repeat(game_weights, 2))
+    game_weights = _recency_weights(games, half_life_days)
+    # Keep Ridge's penalty comparable across half-lives. Unnormalized faster
+    # decay otherwise shrinks every team harder merely by reducing total mass.
+    fitted.regression.fit(features, scores, sample_weight=np.repeat(game_weights / game_weights.mean(), 2))
+    fitted.season_weights = [
+        {"season": season, "games": sum(game["season"] == season for game in games),
+         "weight_share": float(sum(weight for game, weight in zip(games, game_weights) if game["season"] == season) / game_weights.sum())}
+        for season in sorted({game["season"] for game in games}, reverse=True)
+    ]
     actual = scores.reshape(-1, 2)
     fitted.score_distribution = ScoreDistribution.fit(actual, game_weights, prior_games=prior_games)
     return fitted
 
 
 def _fit(games):
-    """Choose smoothing on inner chronological data, then refit all training data."""
-    selection = {"games": 0, "selected_prior_games": JOINT_PRIOR_GAMES, "candidates": []}
+    """Choose recency and smoothing on inner dates, then refit training data."""
+    selection = {"games": 0, "selected_prior_games": JOINT_PRIOR_GAMES, "candidates": [],
+                 "selected_half_life_days": RECENCY_HALF_LIFE_DAYS, "recency_candidates": []}
     if len(games) >= MINIMUM_PRIOR_SELECTION_GAMES:
         dates = sorted({game["gameday"] for game in games})
         split = dates[min(len(dates) - 1, int(len(dates) * 0.8))]
         earlier = [g for g in games if g["gameday"] < split]
         validation = [g for g in games if g["gameday"] >= split]
         if len(earlier) >= 100 and len(validation) >= 20:
+            recency_fits = {}
+            for half_life in RECENCY_CANDIDATES:
+                candidate = _fit_base(earlier, half_life_days=half_life)
+                eligible = [g for g in validation if g["home_team"] in candidate.team_indices and g["away_team"] in candidate.team_indices]
+                if len(eligible) < 20:
+                    continue
+                errors = [np.array(candidate.scores(g["home_team"], g["away_team"], g["neutral"])) - [g["home_score"], g["away_score"]] for g in eligible]
+                selection["recency_candidates"].append({"half_life_days": half_life, "score_mse": float(np.mean(np.square(errors))), "games": len(eligible)})
+                recency_fits[half_life] = candidate
+            if recency_fits:
+                selection["selected_half_life_days"] = min(selection["recency_candidates"], key=lambda row: row["score_mse"])["half_life_days"]
             if len(validation) > MAXIMUM_PRIOR_VALIDATION_GAMES:
                 validation = [validation[i] for i in np.linspace(0, len(validation) - 1, MAXIMUM_PRIOR_VALIDATION_GAMES, dtype=int)]
-            inner = _fit_base(earlier)
+            inner = recency_fits.get(selection["selected_half_life_days"]) or _fit_base(earlier)
             validation = [g for g in validation if g["home_team"] in inner.team_indices and g["away_team"] in inner.team_indices]
             targets = [inner.scores(g["home_team"], g["away_team"], g["neutral"]) for g in validation]
-            weights = np.array([0.5 ** ((inner.trained_through - g["gameday"]).days / RECENCY_HALF_LIFE_DAYS) for g in earlier])
+            weights = _recency_weights(earlier, selection["selected_half_life_days"])
             actual = np.array([[g["home_score"], g["away_score"]] for g in earlier])
             if len(validation) >= 20:
                 for prior in JOINT_PRIOR_CANDIDATES:
@@ -247,7 +281,7 @@ def _fit(games):
                     "through_date": validation[-1]["gameday"].isoformat(),
                     "selected_prior_games": min(selection["candidates"], key=lambda row: row["log_loss"])["prior_games"],
                 })
-    fitted = _fit_base(games, prior_games=selection["selected_prior_games"])
+    fitted = _fit_base(games, prior_games=selection["selected_prior_games"], half_life_days=selection["selected_half_life_days"])
     fitted.prior_selection = selection
     return fitted
 
@@ -264,10 +298,13 @@ def _forecast(fitted, home_team, away_team, neutral=False, allow_ties=True, mean
         "home_team": home_team, "away_team": away_team,
         "neutral": neutral, "allow_ties": allow_ties,
         "home_score": home_score, "away_score": away_score,
-        "score_prediction": scorelines[0], "top_scorelines": scorelines,
+        "score_prediction": fitted.score_distribution.point_scoreline(probabilities, home_team, away_team),
+        "top_scorelines": scorelines,
         "margin": home_score - away_score, "total": home_score + away_score,
         "favorite": None if abs(difference) < 1e-12 else home_team if difference > 0 else away_team,
         "home_games": home_games, "away_games": away_games,
+        "home_current_season_games": fitted.current_season_counts[home_team],
+        "away_current_season_games": fitted.current_season_counts[away_team],
         "low_data": min(home_games, away_games) < 8,
         **summary,
     }
@@ -321,13 +358,14 @@ def build_forecast_model(games: list[dict]) -> ForecastModel:
     fitted = _fit(cleaned)
     metadata = {
         "name": "Experimental final-score forecast",
-        "version": "ridge-joint-score-v3",
+        "version": "ridge-joint-score-v4",
         "method": (
             "Ridge regression fits team scoring, opponent points allowed, and "
             "a shared home-field advantage with regularized team deviations. Recent games receive "
             "more weight. A smoothed distribution of historical final-score pairs "
             "is adjusted to these expected points using exponential tilting. Its "
-            "most probable pair supplies the integer score prediction. "
+            "central integer projection minimizes expected absolute score error; "
+            "the most likely exact outcomes are listed separately. "
             "Win, loss and tie chances and margin ranges all come from this same "
             "score distribution. Calibration is assessed on chronological test games."
         ),
@@ -344,7 +382,11 @@ def build_forecast_model(games: list[dict]) -> ForecastModel:
         },
         "assumptions": {
             "ridge_alpha": RIDGE_ALPHA,
-            "recency_half_life_days": RECENCY_HALF_LIFE_DAYS,
+            "recency_half_life_days": fitted.recency_half_life_days,
+            "recency_candidates": list(RECENCY_CANDIDATES),
+            "regression_weight_normalization": "mean_one",
+            "history_weight_by_season": fitted.season_weights,
+            "point_forecast_method": "minimum_expected_absolute_error",
             "joint_prior_games": fitted.score_distribution.prior_games,
             "joint_prior_candidates": list(JOINT_PRIOR_CANDIDATES),
             "prior_selection": fitted.prior_selection,
@@ -355,7 +397,7 @@ def build_forecast_model(games: list[dict]) -> ForecastModel:
                 "home/away orientations and shrunk toward smoothed independent "
                 "marginals. Minimum-relative-entropy exponential tilting matches "
                 "the two ridge score means. Postseason scorelines exclude ties. "
-                "The joint mode predicts a final score."
+                "The central integer projection minimizes expected absolute point error on supported score pairs."
             ),
             "scoreline_log_loss_baseline": (
                 "The same training-only league score distribution without "
@@ -374,8 +416,8 @@ def build_forecast_model(games: list[dict]) -> ForecastModel:
             "Experimental score-only model; probability calibration is not established.",
             "Injuries, quarterbacks, weather, rest, and roster changes are not modeled.",
             "Binary winner accuracy and Brier score exclude ties; Brier probabilities condition on a decisive result.",
-            "The predicted final score is one possible outcome; exact-score probabilities are uncalibrated.",
-            "The most likely single scoreline can differ from the favorite across all outcomes.",
+            "The projected score summarizes the distribution; it is not the most likely exact outcome.",
+            "A tied projection means a close matchup, not that a tied result is likely.",
             "The score distribution excludes one-point finals unless observed in training and has finite tail support.",
             "The central 80% margin range is discrete; observed coverage may differ from its target.",
             "Teams with fewer than eight prior games have limited history.",

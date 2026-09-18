@@ -190,6 +190,53 @@ class ScoreDistributionTests(unittest.TestCase):
         dirty = ScoreDistribution.fit([[20, 17], [200, 200]], [1, 0])
         np.testing.assert_array_equal(clean.base, dirty.base)
 
+    def test_projected_score_does_not_repeat_a_remote_34_10_mode(self):
+        points = np.arange(51)
+        selected = set()
+        for home_mean in (21, 23, 25, 27):
+            for away_mean in (19, 21, 23, 25):
+                home = np.exp(-0.5 * ((points - home_mean) / 7) ** 2)
+                away = np.exp(-0.5 * ((points - away_mean) / 7) ** 2)
+                mass = np.outer(home / home.sum(), away / away.sum()) * 0.99
+                mass[34, 10] += 0.01
+                before = mass.copy()
+                self.assertEqual(self.distribution.top_scorelines(mass, "HOU", "CIN")[0]["home_score"], 34)
+                projection = self.distribution.point_scoreline(mass, "HOU", "CIN")
+                self.assertLessEqual(abs(projection["home_score"] - home_mean), 1)
+                self.assertLessEqual(abs(projection["away_score"] - away_mean), 1)
+                selected.add((projection["home_score"], projection["away_score"]))
+                self.assertEqual(projection["probability"], mass[projection["home_score"], projection["away_score"]])
+                np.testing.assert_array_equal(before, mass)
+        self.assertEqual(len(selected), 16)
+
+    def test_point_projection_matches_independent_absolute_loss_oracle(self):
+        rng = np.random.default_rng(2026)
+        for _ in range(25):
+            mass = rng.random((7, 7))
+            mass[mass < 0.3] = 0
+            mass /= mass.sum()
+            projection = self.distribution.point_scoreline(mass, "AAA", "BBB")
+            def loss(h, a):
+                return sum(mass[x, y] * (abs(h - x) + abs(a - y)) for x in range(7) for y in range(7))
+            optimum = min(loss(h, a) for h in range(7) for a in range(7) if mass[h, a] > 0)
+            self.assertAlmostEqual(loss(projection["home_score"], projection["away_score"]), optimum)
+            self.assertEqual(projection["method"], "minimum_expected_absolute_error")
+
+    def test_point_projection_respects_support_postseason_and_reversal(self):
+        for means, allow_ties in [((25.0, 21.0), True), ((20.0, 20.0), False), ((0.0, 27.0), False)]:
+            mass = self.distribution.probabilities(*means, allow_ties=allow_ties)
+            forward = self.distribution.point_scoreline(mass, "HOU", "CIN")
+            reverse = self.distribution.point_scoreline(mass.T, "CIN", "HOU")
+            self.assertEqual(forward["home_score"], reverse["away_score"])
+            self.assertEqual(forward["away_score"], reverse["home_score"])
+            self.assertEqual(forward["probability"], reverse["probability"])
+            self.assertGreater(forward["probability"], 0)
+            self.assertNotIn(1, (forward["home_score"], forward["away_score"]))
+            if not allow_ties:
+                self.assertNotEqual(forward["home_score"], forward["away_score"])
+        point = self.distribution.point_scoreline(self.distribution.probabilities(0, 0), "HOU", "CIN")
+        self.assertEqual((point["home_score"], point["away_score"], point["probability"]), (0, 0, 1))
+
 
 if __name__ == "__main__":
     unittest.main()

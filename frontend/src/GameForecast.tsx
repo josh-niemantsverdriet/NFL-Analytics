@@ -19,6 +19,7 @@ interface Forecast {
   home_score: number;
   away_score: number;
   score_prediction?: ScorePrediction;
+  typical_score_estimate?: ScorePrediction;
   top_scorelines?: ScorePrediction[];
   home_win_probability: number;
   away_win_probability: number;

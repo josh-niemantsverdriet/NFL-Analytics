@@ -1,6 +1,7 @@
 # Score-distribution overhaul (v5)
 
-Investigated September 18, 2026. Model version: `ridge-smooth-score-v5`.
+Investigated September 18, 2026. Distribution version: `ridge-smooth-score-v5`;
+the v6 API displays the highest-probability exact score as its prediction.
 This is a local implementation and validation report, not a deployed forecast
 or a guarantee of a game outcome.
 
@@ -51,8 +52,8 @@ With the cached schedule results through September 17, the refit chooses 10%
 pair dependence and 180-day recency. Houston-Cincinnati's leading exact pairs
 are now **27-20 (0.543%)**, **34-10 (0.506%)**, and **31-10 (0.457%)**. Thus
 34-10 is no longer presented as the highest-probability exact outcome. The
-separate central projection remains Houston 27-22 because it minimizes expected
+separate central projection remains Houston 28-22 because it minimizes expected
 absolute point error across the whole distribution.
 
-The interface calls these rows **Highest-probability exact scores**, and explains
-that each remains unlikely. It calls the central output **Typical score estimate**.
+The v6 interface presents 27-20 as the **Predicted final score**. It retains the
+28-22 typical estimate only in the API for evaluation and advanced consumers.

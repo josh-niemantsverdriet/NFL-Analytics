@@ -17,11 +17,16 @@ test('central projection is distinct from the 34-10 exact mode', () => {
   assert.equal(view.tiedProjection, false);
 });
 
-test('legacy modes retain their meaning and tied central projections are explicit', () => {
-  const mode = { home_score: 34, away_score: 10, probability: 0.0064 };
-  assert.deepEqual(scorePresentation(mode, [mode]).alternatives, []);
-  assert.match(scorePresentation(mode).explanation, /most likely single result/);
-  assert.equal(scorePresentation(mode).scoreKind, 'PREDICTED');
+test('highest-probability exact score is the primary prediction', () => {
+  const mode = { home_score: 27, away_score: 20, probability: 0.0064, method: 'highest_probability_exact_score' };
+  const next = { home_score: 31, away_score: 17, probability: 0.0058 };
+  const view = scorePresentation(mode, [mode, next]);
+  assert.equal(view.heading, 'Predicted final score');
+  assert.equal(view.scoreKind, 'PREDICTED');
+  assert.equal(view.exactProbabilityLabel, 'Model probability of this exact score');
+  assert.equal(view.alternativesHeading, 'Next most likely scores');
+  assert.deepEqual(view.alternatives, [next]);
+  assert.match(view.explanation, /highest-probability exact result/);
   assert.equal(scorePresentation().heading, 'Expected average score');
   assert.equal(scorePresentation({ home_score: 23, away_score: 23, probability: 0.002, method: 'minimum_expected_absolute_error' }).tiedProjection, true);
 });

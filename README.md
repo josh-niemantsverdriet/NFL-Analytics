@@ -10,15 +10,15 @@ React/TypeScript dashboards and an Azure Functions API using nflverse data.
 
 ## Forecast methodology
 
-The `ridge-smooth-score-v5` model fits recency-weighted offense and defense ratings,
+The `ridge-smooth-score-v6` model fits recency-weighted offense and defense ratings,
 with a shared home-field advantage and regularized team deviations. A smoothed
 distribution of final scores is exponentially tilted to match expected points.
 It begins with score marginals and limits the influence of historical exact
 score pairs, so a frequent league-wide final cannot become a generic forecast.
 Scorelines, win/loss/tie probabilities, and margin intervals all come from that
-distribution. The headline is a central integer score minimizing expected point
-error; separately listed exact outcomes are only the highest-probability pairs,
-each still unlikely.
+distribution. The headline is the highest-probability exact final; a separate
+typical-score estimate minimizes expected point error. Every individual exact
+outcome remains unlikely.
 Scheduled postseason games exclude ties.
 
 Recency half-life (120, 180 or 270 days) and pair dependence (0%, 5%, or 10%) are selected using inner

@@ -36,7 +36,10 @@ class ForecastSimulationTests(unittest.TestCase):
                 with self.subTest(home=home, away=away, through=model.trained_through):
                     neutral, allow_ties = index % 2 == 0, index % 3 != 0
                     forecast = _forecast(model, home, away, neutral, allow_ties)
-                    self.assertEqual(forecast["score_prediction"]["method"], "minimum_expected_absolute_error")
+                    self.assertEqual(forecast["score_prediction"]["method"], "highest_probability_exact_score")
+                    self.assertEqual(forecast["score_prediction"]["home_score"], forecast["top_scorelines"][0]["home_score"])
+                    self.assertEqual(forecast["score_prediction"]["away_score"], forecast["top_scorelines"][0]["away_score"])
+                    self.assertEqual(forecast["typical_score_estimate"]["method"], "minimum_expected_absolute_error")
                     if not allow_ties:
                         self.assertNotEqual(forecast["score_prediction"]["home_score"], forecast["score_prediction"]["away_score"])
                     json.dumps(forecast, allow_nan=False)

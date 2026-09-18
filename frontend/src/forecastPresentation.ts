@@ -20,7 +20,7 @@ export function scorePresentation(projection?: Scoreline, exactScores: Scoreline
     explanation: central
       ? "This is a typical score estimate, not the most likely exact final. It minimizes expected point error. The highest-probability exact scores are listed separately; each is still unlikely."
       : projection
-        ? "The predicted final score is the model’s most likely single result; many other outcomes are possible."
+        ? "The predicted final score is the model's highest-probability exact result; many other outcomes are possible."
         : "Scores are expected averages.",
     tiedProjection: central && projection.home_score === projection.away_score,
   };

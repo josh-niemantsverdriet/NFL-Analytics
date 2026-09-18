@@ -111,20 +111,21 @@ cutoff after evaluation. Simulated histories never enter production training.
 - `GET /api/forecast?home_team=BUF&away_team=MIA&neutral=false`: hypothetical
   regular-season matchup using the same fitted model.
 
-`home_score` and `away_score` remain decimal expected points. `score_prediction`
-and `top_scorelines` contain integer scores with probabilities. `margin` is
+`home_score` and `away_score` remain decimal expected points. `score_prediction`,
+`typical_score_estimate`, and `top_scorelines` contain integer scores with probabilities. `margin` is
 always home minus away; `total` is the sum of expected points. `favorite` is
 based on win probability. `allow_ties` is false for scheduled postseason games.
 `margin_stddev` now describes the joint distribution's margin uncertainty.
 
-**v4 point-forecast change:** `score_prediction.method` is
-`minimum_expected_absolute_error`. `score_prediction` is a central projection,
-while `top_scorelines[0]` is the highest-probability exact outcome. Its probability
-is still small and is not a confidence score for the projected pair.
-`predicted_score_mae` and `exact_score_accuracy` evaluate the central projection;
-`modal_score_mae` and `modal_exact_score_accuracy` evaluate the exact mode.
-`projected_unique_scorelines` and `most_common_projected_score_share` monitor
-headline concentration. Deploy frontend and backend together for correct labels.
+**v6 displayed-score change:** `score_prediction.method` is
+`highest_probability_exact_score`, and it is exactly `top_scorelines[0]`. This is
+the displayed predicted final. Its probability remains small; it is not a
+confidence score. `typical_score_estimate.method` is
+`minimum_expected_absolute_error` and is retained for evaluation and API users
+who need a representative point estimate. `predicted_score_mae` and
+`exact_score_accuracy` evaluate that typical estimate; `modal_score_mae` and
+`modal_exact_score_accuracy` evaluate the highest-probability exact final.
+Deploy frontend and backend together for the v6 response semantics.
 
 **v5 score-distribution change:** `assumptions.pair_dependence` reports the
 fitted empirical-pair share, and `assumptions.distribution_selection` reports

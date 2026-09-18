@@ -291,6 +291,8 @@ def _forecast(fitted, home_team, away_team, neutral=False, allow_ties=True, mean
     if probabilities is None:
         probabilities = fitted.score_distribution.probabilities(home_score, away_score, allow_ties=allow_ties)
     scorelines = fitted.score_distribution.top_scorelines(probabilities, home_team, away_team)
+    primary_scoreline = scorelines[0] | {"method": "highest_probability_exact_score"}
+    typical_score = fitted.score_distribution.point_scoreline(probabilities, home_team, away_team)
     summary = fitted.score_distribution.summarize(probabilities, INTERVAL_COVERAGE)
     home_games, away_games = fitted.game_counts[home_team], fitted.game_counts[away_team]
     difference = summary["home_win_probability"] - summary["away_win_probability"]
@@ -298,7 +300,8 @@ def _forecast(fitted, home_team, away_team, neutral=False, allow_ties=True, mean
         "home_team": home_team, "away_team": away_team,
         "neutral": neutral, "allow_ties": allow_ties,
         "home_score": home_score, "away_score": away_score,
-        "score_prediction": fitted.score_distribution.point_scoreline(probabilities, home_team, away_team),
+        "score_prediction": primary_scoreline,
+        "typical_score_estimate": typical_score,
         "top_scorelines": scorelines,
         "margin": home_score - away_score, "total": home_score + away_score,
         "favorite": None if abs(difference) < 1e-12 else home_team if difference > 0 else away_team,
@@ -358,14 +361,14 @@ def build_forecast_model(games: list[dict]) -> ForecastModel:
     fitted = _fit(cleaned)
     metadata = {
         "name": "Experimental final-score forecast",
-        "version": "ridge-smooth-score-v5",
+        "version": "ridge-smooth-score-v6",
         "method": (
             "Ridge regression fits team scoring, opponent points allowed, and "
             "a shared home-field advantage with regularized team deviations. Recent games receive "
             "more weight. A smoothed distribution of historical final-score pairs "
             "is adjusted to these expected points using exponential tilting. Its "
-            "central integer projection minimizes expected absolute score error; "
-            "the most likely exact outcomes are listed separately. "
+            "The displayed score prediction is the highest-probability exact final; "
+            "a separate typical-score estimate minimizes expected absolute score error. "
             "Win, loss and tie chances and margin ranges all come from this same "
             "score distribution. Calibration is assessed on chronological test games."
         ),
@@ -396,7 +399,7 @@ def build_forecast_model(games: list[dict]) -> ForecastModel:
                 "Recency-weighted marginal final-score frequencies with a small "
                 "validated empirical-pair dependence blend. Minimum-relative-entropy "
                 "exponential tilting matches the two ridge score means. Postseason scorelines exclude ties. "
-                "The central integer projection minimizes expected absolute point error on supported score pairs."
+                "The displayed prediction is the highest-probability exact final. The separate typical-score estimate minimizes expected absolute point error on supported score pairs."
             ),
             "scoreline_log_loss_baseline": (
                 "The same training-only smooth league score distribution without "

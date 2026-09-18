@@ -49,7 +49,7 @@ def evaluate(games, fit, forecast):
             mass = model.score_distribution.probabilities(*means, allow_ties=game["allow_ties"])
             prediction = forecast(model, home, away, game["neutral"], game["allow_ties"], means, mass)
             actual = np.array([game["home_score"], game["away_score"]], dtype=int)
-            point = prediction["score_prediction"]
+            point = prediction["typical_score_estimate"]
             predicted_scores = np.array([point["home_score"], point["away_score"]])
             mode = prediction["top_scorelines"][0]
             modal_scores = np.array([mode["home_score"], mode["away_score"]])

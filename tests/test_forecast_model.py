@@ -2,7 +2,9 @@ import copy
 from datetime import date, timedelta
 import json
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
+
+import numpy as np
 
 from src.forecast_model import ForecastDataError, build_forecast_model
 
@@ -39,6 +41,9 @@ class ForecastModelTests(unittest.TestCase):
         reverse = model.predict("NYJ", "BUF", neutral=True)
         self.assertAlmostEqual(forward["home_score"], reverse["away_score"])
         self.assertAlmostEqual(forward["away_score"], reverse["home_score"])
+        self.assertEqual(forward["score_prediction"]["home_score"], reverse["score_prediction"]["away_score"])
+        self.assertEqual(forward["score_prediction"]["away_score"], reverse["score_prediction"]["home_score"])
+        self.assertAlmostEqual(forward["score_prediction"]["probability"], reverse["score_prediction"]["probability"])
         self.assertAlmostEqual(forward["margin"], -reverse["margin"])
         self.assertAlmostEqual(
             forward["home_win_probability"], reverse["away_win_probability"],
@@ -90,19 +95,35 @@ class ForecastModelTests(unittest.TestCase):
         self.assertEqual(len(captured_fits[1]), len(history))
 
     def test_changed_held_out_results_do_not_change_evaluation_model_or_sigma(self):
+        from src import forecast_model
+
         history = game_history()
-        baseline = build_forecast_model(history)
+        captured = []
+        original_fit = forecast_model._fit
+
+        def capture(games):
+            fitted = original_fit(games)
+            captured.append(fitted)
+            return fitted
+
+        with patch.object(forecast_model, "_fit", side_effect=capture):
+            baseline = build_forecast_model(history)
         cutoff = baseline.metadata["evaluation"]["from_date"]
         changed = copy.deepcopy(history)
         for game in changed:
             if game["gameday"] >= cutoff:
                 game["home_score"] += 35
-        updated = build_forecast_model(changed)
+        with patch.object(forecast_model, "_fit", side_effect=capture):
+            updated = build_forecast_model(changed)
+        np.testing.assert_array_equal(
+            captured[0].score_distribution.base, captured[2].score_distribution.base,
+        )
         before = baseline.metadata["evaluation"]
         after = updated.metadata["evaluation"]
         self.assertEqual(before["margin_stddev"], after["margin_stddev"])
         self.assertEqual(before["training_through"], after["training_through"])
         self.assertNotEqual(before["margin_mae"], after["margin_mae"])
+        self.assertNotEqual(before["scoreline_log_loss"], after["scoreline_log_loss"])
         self.assertNotEqual(
             baseline.predict("BUF", "KC")["home_score"],
             updated.predict("BUF", "KC")["home_score"],
@@ -117,6 +138,7 @@ class ForecastModelTests(unittest.TestCase):
             {**history[0], "game_id": "negative", "home_score": -1},
             {**history[0], "game_id": "boolean", "home_score": True},
             {**history[0], "game_id": "fraction", "home_score": 2.5},
+            {**history[0], "game_id": "oversized", "home_score": 100000},
             {**history[0], "game_id": "date", "gameday": "bad-date"},
             {**history[0], "game_id": "self", "away_team": history[0]["home_team"]},
             {**history[0], "game_id": "location", "location": "Unknown"},
@@ -158,6 +180,42 @@ class ForecastModelTests(unittest.TestCase):
         self.assertEqual(evaluation["games"], 0)
         self.assertIsNone(evaluation["winner_accuracy"])
         self.assertIsNone(evaluation["margin_mae"])
+        self.assertIsNone(evaluation["exact_score_accuracy"])
+        self.assertIsNone(evaluation["scoreline_log_loss"])
+
+    def test_score_evaluation_distinguishes_means_modes_and_oriented_results(self):
+        from src.forecast_model import _clean_games, _evaluate
+
+        history = game_history()
+        # Half of the held-out games match the mode, half reverse its teams.
+        for index, game in enumerate(history[80:]):
+            game["home_score"], game["away_score"] = (27, 20) if index < 10 else (20, 27)
+        cleaned, _, _ = _clean_games(history)
+        fitted = Mock()
+        fitted.team_indices = {team: index for index, team in enumerate(["BUF", "KC", "NYJ", "MIA"])}
+        fitted.trained_through = cleaned[79]["gameday"]
+        fitted.margin_stddev = 10.0
+        fitted.scores.return_value = (24.5, 20.5)
+        mass = np.zeros((31, 31))
+        mass[27, 20], mass[20, 27] = 0.2, 0.1
+        baseline = np.zeros((31, 31))
+        baseline[27, 20] = baseline[20, 27] = 0.1
+        fitted.score_distribution.probabilities.return_value = mass
+        fitted.score_distribution.baseline.return_value = baseline
+        fitted.score_distribution.top_scorelines.return_value = [
+            {"home_score": 27, "away_score": 20, "probability": 0.2},
+        ]
+        with patch("src.forecast_model._fit", return_value=fitted):
+            evaluation = _evaluate(cleaned)
+
+        self.assertEqual(evaluation["games"], 20)
+        self.assertAlmostEqual(evaluation["score_mae"], 3.5)
+        self.assertAlmostEqual(evaluation["score_rmse"], np.sqrt(17.25))
+        self.assertAlmostEqual(evaluation["predicted_score_mae"], 3.5)
+        self.assertEqual(evaluation["exact_score_accuracy"], 0.5)
+        self.assertEqual(evaluation["rounded_score_accuracy"], 0.0)
+        self.assertAlmostEqual(evaluation["scoreline_log_loss"], -0.5 * np.log(0.02))
+        self.assertAlmostEqual(evaluation["baseline_scoreline_log_loss"], -np.log(0.1))
 
     def test_historical_aliases_share_one_team_rating(self):
         history = game_history()

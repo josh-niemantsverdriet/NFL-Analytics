@@ -68,7 +68,7 @@ class ForecastServiceTests(unittest.TestCase):
             data = service.upcoming_forecasts(self.now)
         self.assertEqual([row["game_id"] for row in data["games"]], ["upcoming", "tomorrow"])
         self.assertTrue(data["games"][0]["neutral"])
-        self.model.predict.assert_any_call("BUF", "MIA", neutral=True)
+        self.model.predict.assert_any_call("BUF", "MIA", neutral=True, allow_ties=True)
 
     def test_cache_reuses_model_but_invalidates_at_daily_cutoff_and_expiry(self):
         state = service.ForecastState(self.model, [], date(2026, 9, 13), "test", 200)
@@ -93,7 +93,14 @@ class ForecastServiceTests(unittest.TestCase):
         with patch.object(service, "get_forecast_state", return_value=state):
             data = service.upcoming_forecasts(self.now)
         self.assertEqual(data["games"][0]["home_team"], "LA")
-        self.model.predict.assert_called_once_with("LA", "BUF", neutral=True)
+        self.model.predict.assert_called_once_with("LA", "BUF", neutral=True, allow_ties=True)
+
+    def test_postseason_forecasts_disallow_tied_final_scores(self):
+        rows = [game("playoff", "2026-09-14", game_type="SB", location="Neutral")]
+        state = service.ForecastState(self.model, rows, date(2026, 9, 13), "test", 100)
+        with patch.object(service, "get_forecast_state", return_value=state):
+            service.upcoming_forecasts(self.now)
+        self.model.predict.assert_called_once_with("BUF", "MIA", neutral=True, allow_ties=False)
 
 
 class ForecastRouteTests(unittest.TestCase):

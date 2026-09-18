@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 import nflreadpy as nfl
 from nflreadpy.config import get_config, update_config
 
-from src.forecast_model import build_forecast_model, normalize_team
+from src.forecast_model import POSTSEASON_GAME_TYPES, build_forecast_model, normalize_team
 
 
 EASTERN = ZoneInfo("America/New_York")
@@ -138,7 +138,8 @@ def upcoming_forecasts(now: datetime | None = None) -> dict:
             "away_team": game["away_team"],
             "neutral": neutral,
             "forecast": state.model.predict(
-                game["home_team"], game["away_team"], neutral=neutral
+                game["home_team"], game["away_team"], neutral=neutral,
+                allow_ties=game.get("game_type") not in POSTSEASON_GAME_TYPES,
             ),
         })
     return result

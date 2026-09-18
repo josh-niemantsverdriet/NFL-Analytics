@@ -14,6 +14,9 @@ import re
 import numpy as np
 from sklearn.linear_model import Ridge
 
+from src.score_distribution import (
+    JOINT_PRIOR_GAMES, MARGINAL_PRIOR_SCORES, MAXIMUM_OBSERVED_SCORE, ScoreDistribution,
+)
 
 RIDGE_ALPHA = 20.0
 RECENCY_HALF_LIFE_DAYS = 365.0
@@ -23,6 +26,7 @@ MINIMUM_EVALUATION_GAMES = 10
 MINIMUM_MARGIN_STDDEV = 7.0
 INTERVAL_COVERAGE = 0.8
 INTERVAL_NORMAL_QUANTILE = 1.2815515655446004
+POSTSEASON_GAME_TYPES = {"WC", "DIV", "CON", "SB"}
 
 TEAM_ALIASES = {
     "LAR": "LA",
@@ -61,6 +65,8 @@ def _score(value):
     score = float(value)
     if not isfinite(score) or score < 0 or not score.is_integer():
         raise ValueError("Completed scores must be finite nonnegative integers.")
+    if score > MAXIMUM_OBSERVED_SCORE:
+        raise ValueError("Completed score exceeds the supported modeling range.")
     return score
 
 
@@ -94,6 +100,7 @@ def _clean_games(games):
                 "home_score": _score(source["home_score"]),
                 "away_score": _score(source["away_score"]),
                 "neutral": location == "neutral",
+                "allow_ties": source.get("game_type") not in POSTSEASON_GAME_TYPES,
             }
         except (KeyError, TypeError, ValueError, OverflowError):
             discarded += 1
@@ -101,7 +108,7 @@ def _clean_games(games):
 
         fixture = (season, gameday, home, away)
         signature = fixture + (
-            game["home_score"], game["away_score"], game["neutral"],
+            game["home_score"], game["away_score"], game["neutral"], game["allow_ties"],
         )
         game_id = game["game_id"]
         if game_id and game_id in seen_ids:
@@ -143,6 +150,7 @@ class _FittedScores:
     game_counts: Counter
     margin_stddev: float
     trained_through: date
+    score_distribution: ScoreDistribution | None = None
 
     @property
     def home_field_points(self):
@@ -200,6 +208,7 @@ def _fit(games):
     fitted.regression.fit(features, scores, sample_weight=np.repeat(game_weights, 2))
     predicted = fitted.regression.predict(features).reshape(-1, 2)
     actual = scores.reshape(-1, 2)
+    fitted.score_distribution = ScoreDistribution.fit(actual, game_weights)
     margin_errors = (actual[:, 0] - actual[:, 1]) - (
         predicted[:, 0] - predicted[:, 1]
     )
@@ -228,6 +237,13 @@ def _evaluate(games):
         "brier_score": None,
         "margin_interval_coverage": None,
         "margin_stddev": None,
+        "score_mae": None,
+        "score_rmse": None,
+        "predicted_score_mae": None,
+        "exact_score_accuracy": None,
+        "rounded_score_accuracy": None,
+        "scoreline_log_loss": None,
+        "baseline_scoreline_log_loss": None,
     }
     dates = sorted({game["gameday"] for game in games})
     if len(dates) < 2:
@@ -247,6 +263,12 @@ def _evaluate(games):
     home_hits = []
     brier_scores = []
     interval_hits = []
+    score_errors = []
+    predicted_score_errors = []
+    exact_score_hits = []
+    rounded_score_hits = []
+    scoreline_losses = []
+    baseline_scoreline_losses = []
     used_dates = []
     for game in held_out:
         if (
@@ -258,6 +280,36 @@ def _evaluate(games):
         home_score, away_score = model.scores(
             game["home_team"], game["away_team"], game["neutral"],
         )
+        probabilities = model.score_distribution.probabilities(
+            home_score, away_score, allow_ties=game["allow_ties"],
+        )
+        predicted_score = model.score_distribution.top_scorelines(
+            probabilities, game["home_team"], game["away_team"], count=1,
+        )[0]
+        actual_home, actual_away = int(game["home_score"]), int(game["away_score"])
+        score_errors.extend([home_score - actual_home, away_score - actual_away])
+        predicted_score_errors.extend([
+            abs(predicted_score["home_score"] - actual_home),
+            abs(predicted_score["away_score"] - actual_away),
+        ])
+        exact_score_hits.append(
+            predicted_score["home_score"] == actual_home
+            and predicted_score["away_score"] == actual_away
+        )
+        rounded_score_hits.append(
+            int(np.floor(home_score + 0.5)) == actual_home
+            and int(np.floor(away_score + 0.5)) == actual_away
+        )
+        # Scores outside finite support receive the same numerical log floor
+        # as other zero-probability outcomes, without changing fitted support.
+        in_support = max(actual_home, actual_away) < len(probabilities)
+        observed_probability = probabilities[actual_home, actual_away] if in_support else 0.0
+        baseline_probability = (
+            model.score_distribution.baseline(game["allow_ties"])[actual_home, actual_away]
+            if in_support else 0.0
+        )
+        scoreline_losses.append(-np.log(max(float(observed_probability), 1e-15)))
+        baseline_scoreline_losses.append(-np.log(max(float(baseline_probability), 1e-15)))
         margin = home_score - away_score
         actual_margin = game["home_score"] - game["away_score"]
         probability = _home_probability(margin, model.margin_stddev)
@@ -292,6 +344,17 @@ def _evaluate(games):
             float(np.mean(interval_hits)) if interval_hits else None
         ),
         "margin_stddev": model.margin_stddev,
+        "score_mae": float(np.mean(np.abs(score_errors))) if score_errors else None,
+        "score_rmse": float(np.sqrt(np.mean(np.square(score_errors)))) if score_errors else None,
+        "predicted_score_mae": (
+            float(np.mean(predicted_score_errors)) if predicted_score_errors else None
+        ),
+        "exact_score_accuracy": float(np.mean(exact_score_hits)) if exact_score_hits else None,
+        "rounded_score_accuracy": float(np.mean(rounded_score_hits)) if rounded_score_hits else None,
+        "scoreline_log_loss": float(np.mean(scoreline_losses)) if scoreline_losses else None,
+        "baseline_scoreline_log_loss": (
+            float(np.mean(baseline_scoreline_losses)) if baseline_scoreline_losses else None
+        ),
     })
     return evaluation
 
@@ -301,7 +364,7 @@ class ForecastModel:
     _fitted: _FittedScores
     metadata: dict
 
-    def predict(self, home_team, away_team, neutral=False):
+    def predict(self, home_team, away_team, neutral=False, allow_ties=True):
         try:
             home_team = normalize_team(home_team)
             away_team = normalize_team(away_team)
@@ -317,8 +380,16 @@ class ForecastModel:
             raise ForecastDataError("No completed game history for: " + ", ".join(missing))
         if not isinstance(neutral, bool):
             raise ForecastDataError("neutral must be a boolean.")
+        if not isinstance(allow_ties, bool):
+            raise ForecastDataError("allow_ties must be a boolean.")
 
         home_score, away_score = self._fitted.scores(home_team, away_team, neutral)
+        probabilities = self._fitted.score_distribution.probabilities(
+            home_score, away_score, allow_ties=allow_ties,
+        )
+        scorelines = self._fitted.score_distribution.top_scorelines(
+            probabilities, home_team, away_team,
+        )
         margin = home_score - away_score
         probability = _home_probability(margin, self._fitted.margin_stddev)
         radius = INTERVAL_NORMAL_QUANTILE * self._fitted.margin_stddev
@@ -328,8 +399,11 @@ class ForecastModel:
             "home_team": home_team,
             "away_team": away_team,
             "neutral": neutral,
+            "allow_ties": allow_ties,
             "home_score": home_score,
             "away_score": away_score,
+            "score_prediction": scorelines[0],
+            "top_scorelines": scorelines,
             "home_win_probability": probability,
             "away_win_probability": 1.0 - probability,
             "margin": margin,
@@ -362,12 +436,15 @@ def build_forecast_model(games: list[dict]) -> ForecastModel:
     evaluation = _evaluate(cleaned)
     fitted = _fit(cleaned)
     metadata = {
-        "name": "Experimental score forecast",
-        "version": "ridge-score-v1",
+        "name": "Experimental final-score forecast",
+        "version": "ridge-joint-score-v2",
         "method": (
             "Ridge regression fits team scoring, opponent points allowed, and "
             "team-specific home-field effects from completed scores. Recent games receive "
-            "more weight. Win chances use an approximate normal distribution of "
+            "more weight. A smoothed distribution of historical final-score pairs "
+            "is adjusted to these expected points using exponential tilting. Its "
+            "most probable pair supplies the integer score prediction. "
+            "Win chances use an approximate normal distribution of "
             "the score margin; they are uncalibrated estimates."
         ),
         "training_games": len(cleaned),
@@ -386,6 +463,20 @@ def build_forecast_model(games: list[dict]) -> ForecastModel:
             "ridge_alpha": RIDGE_ALPHA,
             "recency_half_life_days": RECENCY_HALF_LIFE_DAYS,
             "minimum_margin_stddev": MINIMUM_MARGIN_STDDEV,
+            "joint_prior_games": JOINT_PRIOR_GAMES,
+            "marginal_prior_scores": MARGINAL_PRIOR_SCORES,
+            "score_support_maximum": len(fitted.score_distribution.base) - 1,
+            "scoreline_method": (
+                "Recency-weighted joint final-score frequencies, pooled across "
+                "home/away orientations and shrunk toward smoothed independent "
+                "marginals. Minimum-relative-entropy exponential tilting matches "
+                "the two ridge score means. Postseason scorelines exclude ties. "
+                "The joint mode predicts a final score."
+            ),
+            "scoreline_log_loss_baseline": (
+                "The same training-only league score distribution without "
+                "matchup adjustments; natural logs, probabilities floored at 1e-15."
+            ),
             "evaluation_fraction_of_dates": 0.2,
             "evaluation_method": (
                 "One chronological holdout: fit on earlier dates and evaluate on "
@@ -398,8 +489,11 @@ def build_forecast_model(games: list[dict]) -> ForecastModel:
         "limitations": [
             "Experimental score-only model; probability calibration is not established.",
             "Injuries, quarterbacks, weather, rest, and roster changes are not modeled.",
-            "Ties are not modeled separately; winner accuracy and Brier score exclude ties.",
-            "Score means are averages, not predictions of an exact final score.",
+            "Win chances do not model ties separately; winner accuracy and Brier score exclude ties.",
+            "The predicted final score is one possible outcome; exact-score probabilities are uncalibrated.",
+            "The most likely single scoreline can differ from the favorite across all outcomes.",
+            "Expected scores remain averages; win chances use a separate normal-margin approximation.",
+            "The score distribution excludes one-point finals unless observed in training and has finite tail support.",
             "The nominal 80% margin range is approximate; actual coverage may differ.",
             "Teams with fewer than eight prior games have limited history.",
             "Missing venue labels are assumed to be home games.",

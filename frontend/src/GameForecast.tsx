@@ -3,12 +3,20 @@ import type { FormEvent } from "react";
 import { Link } from "react-router";
 import "./GameForecast.css";
 
+interface ScorePrediction {
+  home_score: number;
+  away_score: number;
+  probability: number;
+}
+
 interface Forecast {
   home_team: string;
   away_team: string;
   neutral: boolean;
   home_score: number;
   away_score: number;
+  score_prediction?: ScorePrediction;
+  top_scorelines?: ScorePrediction[];
   home_win_probability: number;
   away_win_probability: number;
   favorite: string | null;
@@ -34,6 +42,13 @@ interface ModelInfo {
     brier_score: number | null;
     margin_interval_coverage?: number | null;
     decisive_games?: number;
+    score_mae?: number | null;
+    score_rmse?: number | null;
+    predicted_score_mae?: number | null;
+    exact_score_accuracy?: number | null;
+    rounded_score_accuracy?: number | null;
+    scoreline_log_loss?: number | null;
+    baseline_scoreline_log_loss?: number | null;
   };
   limitations: string[];
   method: string;
@@ -73,8 +88,8 @@ interface MatchupRequest {
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
 
-function percent(value: number | null) {
-  return value === null ? "Unavailable" : `${(value * 100).toFixed(1)}%`;
+function percent(value: number | null | undefined, decimals = 1) {
+  return value == null ? "Unavailable" : `${(value * 100).toFixed(decimals)}%`;
 }
 
 function dateLabel(value: string | null) {
@@ -113,10 +128,16 @@ async function fetchData<T>(url: string, signal: AbortSignal): Promise<T> {
 function Scoreboard({ result, game }: { result: ForecastResponse; game?: UpcomingGame }) {
   const forecast = result.forecast;
   const margin = Math.abs(forecast.margin);
+  const scorePrediction = forecast.score_prediction;
+  const alternatives = scorePrediction
+    ? (forecast.top_scorelines ?? []).filter((score) =>
+        score.home_score !== scorePrediction.home_score || score.away_score !== scorePrediction.away_score,
+      ).slice(0, 2)
+    : [];
   return (
     <section className="forecast-board" aria-labelledby="forecast-result-title">
       <div className="forecast-board-top">
-        <h2 id="forecast-result-title">Projected matchup</h2>
+        <h2 id="forecast-result-title">{scorePrediction ? "Predicted final score" : "Expected average score"}</h2>
         <span>
           {game ? `Week ${game.week} · ${dateLabel(game.date)}` : "Your matchup"}
           {forecast.neutral ? " · Neutral field" : ""}
@@ -127,21 +148,36 @@ function Scoreboard({ result, game }: { result: ForecastResponse; game?: Upcomin
         <div className="forecast-team forecast-away">
           <span className="forecast-team-location">{forecast.neutral ? "Team 1" : "Away"}</span>
           <h3>{forecast.away_team}</h3>
-          <strong className="forecast-score">{forecast.away_score.toFixed(1)}</strong>
+          <strong className="forecast-score">{scorePrediction ? scorePrediction.away_score : forecast.away_score.toFixed(1)}</strong>
+          {scorePrediction && <span className="forecast-team-average">Expected average: {forecast.away_score.toFixed(1)}</span>}
           <span className="forecast-team-sample">{forecast.away_games} games of team history</span>
         </div>
         <div className="forecast-score-divider" aria-hidden="true">
-          <span>PROJECTED</span>
+          <span>{scorePrediction ? "PREDICTED" : "EXPECTED"}</span>
           <strong>:</strong>
           <span>POINTS</span>
         </div>
         <div className="forecast-team forecast-home">
           <span className="forecast-team-location">{forecast.neutral ? "Team 2" : "Home"}</span>
           <h3>{forecast.home_team}</h3>
-          <strong className="forecast-score">{forecast.home_score.toFixed(1)}</strong>
+          <strong className="forecast-score">{scorePrediction ? scorePrediction.home_score : forecast.home_score.toFixed(1)}</strong>
+          {scorePrediction && <span className="forecast-team-average">Expected average: {forecast.home_score.toFixed(1)}</span>}
           <span className="forecast-team-sample">{forecast.home_games} games of team history</span>
         </div>
       </div>
+
+      {scorePrediction && <div className="forecast-scorelines">
+        <p>Model probability of this exact score: <strong>{percent(scorePrediction.probability, 2)}</strong></p>
+        {alternatives.length > 0 && <>
+          <span className="forecast-scorelines-label">Next most likely scores</span>
+          <ul>
+            {alternatives.map((score) => <li key={`${score.away_score}-${score.home_score}`}>
+              <span><span className="forecast-away-color">{forecast.away_team} {score.away_score}</span> <span aria-hidden="true">–</span> <span className="forecast-home-color">{forecast.home_team} {score.home_score}</span></span>
+              <span>{percent(score.probability, 2)}</span>
+            </li>)}
+          </ul>
+        </>}
+      </div>}
 
       <div className="forecast-probability">
         <div className="forecast-probability-labels">
@@ -155,14 +191,14 @@ function Scoreboard({ result, game }: { result: ForecastResponse; game?: Upcomin
         </div>
         <p className="forecast-favorite">
           {forecast.favorite
-            ? <><strong>{forecast.favorite}</strong> has the edge by {margin.toFixed(1)} projected points.</>
+            ? <><strong>{forecast.favorite}</strong> has the edge by {margin.toFixed(1)} expected points.</>
             : "Too close to call: the model projects an even matchup."}
         </p>
       </div>
 
       <div className="forecast-insights">
         <div>
-          <span>Projected total</span>
+          <span>Expected total</span>
           <strong>{forecast.total.toFixed(1)} <small>points</small></strong>
         </div>
         <div>
@@ -172,7 +208,10 @@ function Scoreboard({ result, game }: { result: ForecastResponse; game?: Upcomin
         </div>
       </div>
       <p className="forecast-board-note">
-        Scores are expected averages. Win chances are model estimates with ties excluded; individual games can land well outside the projection.
+        {scorePrediction
+          ? "The predicted final score is the model’s most likely single result; many other outcomes are possible. Expected averages summarize the full score distribution."
+          : "Scores are expected averages."}
+        {" "}Win chances are model estimates with ties excluded; individual games can land well outside the projection.
       </p>
     </section>
   );
@@ -206,8 +245,20 @@ function ModelDetails({ model, cutoff }: { model: ModelInfo; cutoff: string }) {
               <div><dt>Always picking home</dt><dd>{percent(evaluation.home_baseline_accuracy)}</dd></div>
               <div><dt>Average margin error</dt><dd>{evaluation.margin_mae === null ? "Unavailable" : `${evaluation.margin_mae.toFixed(1)} pts`}</dd></div>
               <div><dt>Probability error (Brier score)</dt><dd>{evaluation.brier_score === null ? "Unavailable" : evaluation.brier_score.toFixed(3)}</dd></div>
+              {evaluation.score_mae != null && <div><dt>Expected score error (MAE per team)</dt><dd>{evaluation.score_mae.toFixed(1)} pts</dd></div>}
+              {evaluation.score_rmse != null && <div><dt>Expected score error (RMSE per team)</dt><dd>{evaluation.score_rmse.toFixed(1)} pts</dd></div>}
+              {evaluation.predicted_score_mae != null && <div><dt>Predicted final score error (MAE per team)</dt><dd>{evaluation.predicted_score_mae.toFixed(1)} pts</dd></div>}
+              {evaluation.exact_score_accuracy != null && <div><dt>Both final scores correct</dt><dd>{percent(evaluation.exact_score_accuracy, 2)}</dd></div>}
+              {evaluation.rounded_score_accuracy != null && <div><dt>Both scores correct by rounding averages</dt><dd>{percent(evaluation.rounded_score_accuracy, 2)}</dd></div>}
+              {evaluation.scoreline_log_loss != null && <div><dt>Exact score probability error (log loss)</dt><dd>{evaluation.scoreline_log_loss.toFixed(3)}</dd></div>}
+              {evaluation.baseline_scoreline_log_loss != null && <div><dt>League baseline exact score probability error</dt><dd>{evaluation.baseline_scoreline_log_loss.toFixed(3)}</dd></div>}
             </dl>
             <p className="forecast-small">Winner accuracy excludes tied games. Lower margin and probability errors are better.</p>
+            {evaluation.score_mae != null && <p className="forecast-small">
+              Score errors measure points per team. MAE is the average absolute error; RMSE gives larger misses more weight.
+              Exact score accuracy requires both teams’ final scores to match, compared with simply rounding their expected averages.
+              Lower score errors and log loss are better.
+            </p>}
             {evaluation.margin_interval_coverage != null && <p>
               The 80% model margin ranges contained the actual margin in {percent(evaluation.margin_interval_coverage)} of the {evaluation.games.toLocaleString()} test games.
               Observed coverage can differ from the model’s target.

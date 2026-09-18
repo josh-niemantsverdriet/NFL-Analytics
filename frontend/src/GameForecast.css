@@ -175,10 +175,18 @@
 .forecast-away h3, .forecast-away-color { color: var(--forecast-amber); }
 .forecast-home h3, .forecast-home-color { color: var(--forecast-teal); }
 .forecast-score { font-size: clamp(3.7rem, 8vw, 6.7rem); line-height: 1.25; font-weight: 850; font-variant-numeric: tabular-nums; letter-spacing: -0.065em; }
+.forecast-team-average { margin-bottom: 9px; color: var(--forecast-text); font-size: 0.78rem; font-variant-numeric: tabular-nums; text-align: center; }
 .forecast-team-sample { color: var(--forecast-muted); font-size: 0.7rem; }
 .forecast-score-divider { display: flex; align-items: center; flex-direction: column; gap: 5px; color: #a0afbf; }
 .forecast-score-divider span { font-size: 0.55rem; font-weight: 700; letter-spacing: 0.12em; }
 .forecast-score-divider strong { font-size: 3rem; font-weight: 300; line-height: 1; }
+.forecast-scorelines { padding: 0 28px 26px; color: var(--forecast-muted); text-align: center; font-size: 0.78rem; line-height: 1.6; }
+.forecast-scorelines p { margin: 0 0 14px; }
+.forecast-scorelines p strong { color: var(--forecast-text); white-space: nowrap; }
+.forecast-scorelines-label { font-size: 0.69rem; }
+.forecast-scorelines ul { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; margin: 8px 0 0; padding: 0; list-style: none; }
+.forecast-scorelines li { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 8px 12px; border: 1px solid var(--forecast-border); border-radius: 8px; background: var(--forecast-deep); font-variant-numeric: tabular-nums; }
+.forecast-scorelines li > span { white-space: nowrap; }
 .forecast-probability { padding: 0 36px 18px; }
 .forecast-probability-labels { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
 .forecast-probability-labels strong { margin-right: 6px; }
@@ -242,8 +250,10 @@
   .forecast-scoreboard { padding: 26px 12px; grid-template-columns: 1fr 36px 1fr; }
   .forecast-team h3 { font-size: 1.5rem; }
   .forecast-score { font-size: clamp(3rem, 13vw, 4rem); }
+  .forecast-team-average { max-width: 110px; font-size: 0.69rem; line-height: 1.5; }
   .forecast-team-sample { max-width: 110px; text-align: center; font-size: 0.63rem; line-height: 1.5; }
   .forecast-score-divider span { display: none; }
+  .forecast-scorelines { padding: 0 18px 22px; font-size: 0.72rem; }
   .forecast-probability { padding: 0 18px 18px; }
   .forecast-probability-caption { font-size: 0.5rem; letter-spacing: 0; }
   .forecast-probability-labels { gap: 6px; font-size: 0.7rem; }
